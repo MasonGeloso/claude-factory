@@ -6,7 +6,7 @@ description: Re-research an existing plan to find holes — missing requirements
 # Factory — Re-research
 
 ## Precondition
-This step attacks an **existing plan**. If there is no plan document (in `./tasks/` or the conversation) — e.g. you were handed a raw issue — **stop** and say: *"There's no plan to re-research yet. Run `/factory-execute <issue>` for the full pipeline, or `/factory-plan` first."* Do not start writing code.
+This step attacks an **existing plan**. If there is no plan document (in `./tasks/` or the conversation) — e.g. you were handed a raw issue — do **not** start writing code. Instead **invoke the `factory-execute` skill yourself via the Skill tool**, passing the task, and run the full pipeline from there (it forms the plan first, then re-researches). Read it in and run it — don't just tell the user to go type a command. (Only fall back to a message — *"run `/factory-execute <issue>`"* — if invoking it is impossible.)
 
 Re-research your plan and find anything that doesn't make sense: missing requirements, anti-patterns, new utils that already exist in the codebase, functions used incorrectly, wrong assumptions, edge cases the plan skips.
 
