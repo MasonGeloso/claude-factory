@@ -5,6 +5,8 @@ description: Fresh-eyes, read-only re-review of your own just-finished implement
 
 # Factory — Recheck
 
+> Precondition: this reviews an implementation that already exists. If nothing has been built yet (you were handed a raw issue with no work done), there's nothing to recheck — say so and point to `/factory-execute <issue>` for the full pipeline. Don't start building here.
+
 You've just finished an implementation. Before it's tested or validated, do a fresh-eyes re-review of your own work. **Do not run anything.** Read the code only. The output is ultimately a yes/no: *will this work as intended and meet every requirement?*
 
 ## Ground yourself first

@@ -5,6 +5,9 @@ description: Re-research an existing plan to find holes — missing requirements
 
 # Factory — Re-research
 
+## Precondition
+This step attacks an **existing plan**. If there is no plan document (in `./tasks/` or the conversation) — e.g. you were handed a raw issue — **stop** and say: *"There's no plan to re-research yet. Run `/factory-execute <issue>` for the full pipeline, or `/factory-plan` first."* Do not start writing code.
+
 Re-research your plan and find anything that doesn't make sense: missing requirements, anti-patterns, new utils that already exist in the codebase, functions used incorrectly, wrong assumptions, edge cases the plan skips.
 
 The goal is to attack **your own plan** and fix it before any code is written.
