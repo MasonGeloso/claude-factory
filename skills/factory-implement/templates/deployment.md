@@ -1,6 +1,6 @@
 # Factory Deployment — <SERVICE NAME>
 
-> How to set up a worktree, run the stack, and demo/hand off. Read by `/factory-execute`.
+> How to set up a worktree, run the stack, and demo/hand off. Read by `/factory-implement` (the driver).
 
 ## Worktrees
 - **Base dir:** <~/worktrees/>  (new worktree per task: `<base>/<task-id>/<repo>`)

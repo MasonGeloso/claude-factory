@@ -29,7 +29,7 @@ Ask in small batches (use the AskUserQuestion tool where it fits). Cover:
 **Rules & conventions**
 - Context to always capture, title conventions, description format, and anything to **never** include (beyond the universal no-secrets rule).
 
-**Handoff & status** (also used later by `/factory-execute`)
+**Handoff & status** (also used later by `/factory-implement`, the driver)
 - When a task is finished and demoed, where do updates go and what status means **ready for review**?
 - Should a demo be uploaded as a comment on the issue?
 - Conventions for posting assumptions (@-mention the owner), decisions, and questions as comments while work is in progress.

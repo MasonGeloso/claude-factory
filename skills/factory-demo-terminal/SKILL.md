@@ -1,6 +1,6 @@
 ---
 name: factory-demo-terminal
-description: 'Factory-suite copy of the demo-terminal skill. Record polished terminal-style screencast demos by capturing real CLI output and replaying it in an animated HTML "terminal" page via Playwright. Outputs a .webm. Invoked by factory-execute for `terminal` demo mode; also usable standalone. Use when the user wants to demo a CLI tool, script, REPL session, or other terminal workflow — anything where the artifact lives in stdout rather than a browser. Triggers: "factory demo terminal", "demo a CLI", "record a terminal session", "screencast a script", "make a video of this command", "demo my tool". Use `factory-demo-video` (browser-based) when the subject is a web app instead.'
+description: 'Factory-suite copy of the demo-terminal skill. Record polished terminal-style screencast demos by capturing real CLI output and replaying it in an animated HTML "terminal" page via Playwright. Outputs a .webm. Invoked by the factory-implement driver for `terminal` demo mode; also usable standalone. Use when the user wants to demo a CLI tool, script, REPL session, or other terminal workflow — anything where the artifact lives in stdout rather than a browser. Triggers: "factory demo terminal", "demo a CLI", "record a terminal session", "screencast a script", "make a video of this command", "demo my tool". Use `factory-demo-video` (browser-based) when the subject is a web app instead.'
 ---
 
 # Terminal Demo Recorder

@@ -1,6 +1,6 @@
 ---
 name: factory-demo-video
-description: 'Factory-suite copy of the demo-video skill. Create polished demo videos of web applications using playwright-cli with HTML overlay cards, code diffs, chapters, and banners. Records .webm video of a real browser session with composited overlays. Invoked by factory-execute for `video` demo mode; also usable standalone. Use when user says "factory demo video", "make a demo video", "record a demo", "create a screencast", "demo recording", "video walkthrough", or wants to showcase a feature, bug fix, or product workflow as a video.'
+description: 'Factory-suite copy of the demo-video skill. Create polished demo videos of web applications using playwright-cli with HTML overlay cards, code diffs, chapters, and banners. Records .webm video of a real browser session with composited overlays. Invoked by the factory-implement driver for `video` demo mode; also usable standalone. Use when user says "factory demo video", "make a demo video", "record a demo", "create a screencast", "demo recording", "video walkthrough", or wants to showcase a feature, bug fix, or product workflow as a video.'
 ---
 
 # Demo Video Creator

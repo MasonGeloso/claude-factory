@@ -1,6 +1,6 @@
-# Factory Execute — Onboarding
+# Factory — Onboarding
 
-Run this the first time `/factory-execute` is used in a repo (or whenever its config is incomplete). Goal: capture how *this* service is built and shipped so future runs are autonomous. You're filling three things:
+Run this the first time `/factory-implement` (the driver) is used in a repo (or whenever its config is incomplete). Goal: capture how *this* service is built and shipped so future runs are autonomous. You're filling three things:
 
 1. `factory/codebases.md` — the repo(s) this service spans
 2. `factory/deployment.md` — worktrees, running the stack, demo mode

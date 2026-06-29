@@ -36,7 +36,7 @@
 - **Never include:** secrets / tokens / credentials / hard-coded sensitive values — and <anything project-specific>.
 
 ## Handoff & status
-> Used by `/factory-execute` when a task is finished. Also relevant at intake time so created issues start in the right state.
+> Used by `/factory-implement` (the driver) when a task is finished. Also relevant at intake time so created issues start in the right state.
 - **In-progress status:** <status/column set when a task is picked up — e.g. "In Progress"; or "none">
 - **Ready-for-review status:** <what status/column means "done, please review" — e.g. move GitHub Project item to "Ready for Review">
 - **Where updates go:** <same tracker — post comments on the issue>

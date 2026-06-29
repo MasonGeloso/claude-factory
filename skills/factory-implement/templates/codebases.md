@@ -1,7 +1,7 @@
 # Factory Codebases — <SERVICE NAME>
 
 > The repo(s) this service spans, where they live, and how they relate.
-> Read by `/factory-execute` before setting up worktrees. Filled during onboarding.
+> Read by `/factory-implement` (the driver) before setting up worktrees. Filled during onboarding.
 
 ## Repos
 | Repo | Role | Local path | Git remote | Primary? |
