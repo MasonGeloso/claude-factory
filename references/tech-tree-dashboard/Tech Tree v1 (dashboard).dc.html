@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="_ds/nocturne-5b8c8bb2-aa5d-40fe-a648-55e3cd7a4290/styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  html, body { background: var(--color-bg); }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  @keyframes nodePulse { 0%,100%{ box-shadow:0 0 0 1px var(--color-accent), 0 0 13px rgba(145,132,217,0.20); } 50%{ box-shadow:0 0 0 1px var(--color-accent), 0 0 26px rgba(145,132,217,0.50); } }
+  @keyframes nodePulseWarn { 0%,100%{ box-shadow:0 0 0 1px #d6a24e, 0 0 13px rgba(214,162,78,0.18); } 50%{ box-shadow:0 0 0 1px #d6a24e, 0 0 24px rgba(214,162,78,0.44); } }
+  @keyframes flow { to { stroke-dashoffset: -24; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tt-scroll::-webkit-scrollbar { height:11px; width:11px; }
+  .tt-scroll::-webkit-scrollbar-thumb { background: var(--color-neutral-800); border-radius:8px; border:3px solid var(--color-bg); }
+  .tt-scroll::-webkit-scrollbar-track { background: transparent; }
+</style>
+</helmet>
+
+<div style="min-height:100vh; background:radial-gradient(1200px 600px at 78% -10%, rgba(145,132,217,0.10), transparent 60%), var(--color-bg); color:var(--color-text); padding:var(--space-6) var(--space-8) var(--space-8);">
+
+  <!-- ══ HUD BAR ══ -->
+  <div style="display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap; margin-bottom:var(--space-6);">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="width:38px; height:38px; display:grid; place-items:center; border:1px solid var(--color-accent); border-radius:var(--radius-md); color:var(--color-accent); box-shadow:0 0 18px rgba(145,132,217,0.30);">
+        <i class="ph-bold ph-tree-structure" style="font-size:20px;"></i>
+      </div>
+      <div>
+        <div style="font-family:var(--font-heading); font-size:20px; letter-spacing:-0.01em; line-height:1.05;">{{ org }}</div>
+        <div class="mono" style="font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-500); margin-top:2px;">{{ sub }}</div>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:var(--space-6); margin-left:auto; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:11px;">
+        <div style="width:44px; height:44px; display:grid; place-items:center; border:1px solid var(--color-accent-700); border-radius:var(--radius-md); background:var(--color-accent-900); color:var(--color-accent-200);">
+          <span class="mono" style="font-size:15px; font-weight:700;">{{ hud.level }}</span>
+        </div>
+        <div style="min-width:150px;">
+          <div class="mono" style="font-size:10px; letter-spacing:0.12em; color:var(--color-neutral-500); text-transform:uppercase;">Roadmap Level</div>
+          <div class="mono" style="font-size:12.5px; margin:3px 0 5px;">{{ hud.mileLabel }}</div>
+          <div style="height:5px; border-radius:99px; background:var(--color-neutral-900); overflow:hidden;"><div style="height:100%; width:{{ hud.mileXp }}; background:var(--color-accent); border-radius:99px;"></div></div>
+        </div>
+      </div>
+
+      <div style="min-width:168px;">
+        <div class="mono" style="font-size:10px; letter-spacing:0.12em; color:var(--color-neutral-500); text-transform:uppercase; display:flex; align-items:center; gap:5px;"><i class="ph ph-coins"></i> Budget Allocated</div>
+        <div class="mono" style="font-size:12.5px; margin:3px 0 5px;">{{ hud.budgetLabel }}</div>
+        <div style="height:5px; border-radius:99px; background:var(--color-neutral-900); overflow:hidden;"><div style="height:100%; width:{{ hud.budgetPct }}; background:var(--color-accent); border-radius:99px;"></div></div>
+      </div>
+
+      <div style="min-width:158px;">
+        <div class="mono" style="font-size:10px; letter-spacing:0.12em; color:var(--color-neutral-500); text-transform:uppercase; display:flex; align-items:center; gap:5px;"><i class="ph ph-users-three"></i> Crew Deployed</div>
+        <div class="mono" style="font-size:12.5px; margin:3px 0 5px;">{{ hud.crewLabel }}</div>
+        <div style="height:5px; border-radius:99px; background:var(--color-neutral-900); overflow:hidden;"><div style="height:100%; width:{{ hud.crewPct }}; background:var(--color-accent); border-radius:99px;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RESOURCE / LANE STRIP ══ -->
+  <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:var(--space-3); margin-bottom:var(--space-4);">
+    <sc-for list="{{ laneStrip }}" as="lane" hint-placeholder-count="5">
+      <div data-node onClick="{{ lane.onClick }}" style="{{ lane.cardStyle }}" style-hover="border-color:var(--color-neutral-600)">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:26px; height:26px; display:grid; place-items:center; border-radius:6px; background:color-mix(in srgb, var(--color-accent) 12%, transparent); color:var(--color-accent);"><i class="ph-fill {{ lane.icon }}" style="font-size:15px;"></i></span>
+          <div style="font-family:var(--font-heading); font-size:13.5px; line-height:1.1;">{{ lane.name }}</div>
+          <span class="mono" style="margin-left:auto; font-size:14px; color:var(--color-text);">{{ lane.pctLabel }}</span>
+        </div>
+        <div style="height:4px; border-radius:99px; background:var(--color-neutral-900); overflow:hidden; margin:9px 0 8px;"><div style="height:100%; width:{{ lane.pct }}; background:var(--color-accent); border-radius:99px;"></div></div>
+        <div class="mono" style="display:flex; justify-content:space-between; font-size:10.5px; color:var(--color-neutral-500);">
+          <span>{{ lane.spendLabel }} active</span>
+          <span>{{ lane.crewLabel }} crew</span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ══ TOOLBAR ══ -->
+  <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-3);">
+    <div style="display:inline-flex; border:1px solid var(--color-divider); border-radius:var(--radius-md); overflow:hidden;">
+      <sc-for list="{{ statusFilters }}" as="f" hint-placeholder-count="5">
+        <button data-node onClick="{{ f.onClick }}" style="{{ f.style }}" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent)">
+          <span style="{{ f.dotStyle }}"></span>{{ f.label }}<span class="mono" style="opacity:0.6; font-size:10px;">{{ f.count }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ filterActive }}" hint-placeholder-val="{{ false }}">
+      <button class="btn btn-ghost" onClick="{{ resetFilters }}" style="font-size:12px;"><i class="ph ph-x"></i> Clear</button>
+    </sc-if>
+
+    <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+      <span class="mono" style="font-size:10px; letter-spacing:0.1em; color:var(--color-neutral-500); text-transform:uppercase; display:flex; align-items:center; gap:6px;"><i class="ph ph-hand-grabbing"></i> drag to pan</span>
+      <div style="display:inline-flex; align-items:center; border:1px solid var(--color-divider); border-radius:var(--radius-md); overflow:hidden;">
+        <button data-node class="btn btn-icon" onClick="{{ zoomOut }}" style="border-radius:0; width:34px; height:32px;"><i class="ph ph-minus"></i></button>
+        <span class="mono" onClick="{{ zoomFit }}" data-node style="min-width:52px; text-align:center; font-size:11px; cursor:pointer; color:var(--color-neutral-400); user-select:none;" title="Fit to view">{{ zoomLabel }}</span>
+        <button data-node class="btn btn-icon" onClick="{{ zoomIn }}" style="border-radius:0; width:34px; height:32px;"><i class="ph ph-plus"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TREE CANVAS ══ -->
+  <div style="position:relative; border:1px solid var(--color-divider); border-radius:var(--radius-lg); overflow:hidden; background:linear-gradient(var(--color-bg), #13141f);">
+    <div class="tt-scroll" ref="{{ setCanvas }}" onMouseDown="{{ onCanvasDown }}" style="height:560px; overflow:auto; cursor:grab; background-image:radial-gradient(circle at 1px 1px, rgba(147,151,171,0.08) 1px, transparent 0); background-size:26px 26px;">
+      <div style="{{ sizerStyle }}">
+        <div style="{{ innerStyle }}">
+
+          <!-- lane bands -->
+          <sc-for list="{{ laneBands }}" as="b" hint-placeholder-count="5">
+            <div style="{{ b.style }}"></div>
+          </sc-for>
+
+          <!-- tier headers -->
+          <sc-for list="{{ tierHeaders }}" as="h" hint-placeholder-count="5">
+            <div style="{{ h.style }}">
+              <div class="mono" style="font-size:12px; letter-spacing:0.14em; color:var(--color-accent-300);">{{ h.label }}</div>
+              <div style="font-size:10.5px; color:var(--color-neutral-500); margin-top:2px;">{{ h.sub }}</div>
+            </div>
+          </sc-for>
+
+          <!-- in-canvas lane tabs -->
+          <sc-for list="{{ laneTabs }}" as="t" hint-placeholder-count="5">
+            <div style="{{ t.style }}">
+              <span style="width:24px; height:24px; display:grid; place-items:center; border-radius:6px; background:color-mix(in srgb, var(--color-accent) 12%, transparent); color:var(--color-accent);"><i class="ph-fill {{ t.icon }}" style="font-size:14px;"></i></span>
+              <span style="font-family:var(--font-heading); font-size:11.5px; line-height:1.15;">{{ t.name }}</span>
+            </div>
+          </sc-for>
+
+          <!-- connectors -->
+          <svg style="{{ svgStyle }}" width="{{ contentW }}" height="{{ contentH }}">
+            <sc-for list="{{ connectors }}" as="c" hint-placeholder-count="0">
+              <path d="{{ c.d }}" fill="none" stroke="{{ c.stroke }}" stroke-width="{{ c.width }}" stroke-dasharray="{{ c.dash }}" style="{{ c.style }}"></path>
+            </sc-for>
+          </svg>
+
+          <!-- nodes -->
+          <sc-for list="{{ nodes }}" as="n" hint-placeholder-count="0">
+            <div data-node onClick="{{ n.onClick }}" style="{{ n.boxStyle }}" style-hover="{{ n.hoverStyle }}">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                <span style="{{ n.iconStyle }}"><i class="ph-fill {{ n.icon }}" style="font-size:15px;"></i></span>
+                <span class="mono" style="{{ n.pillStyle }}"><i class="{{ n.pillIcon }}" style="font-size:10px;"></i>{{ n.statusLabel }}</span>
+              </div>
+              <div style="{{ n.titleStyle }}">{{ n.name }}</div>
+              <div class="mono" style="display:flex; gap:12px; margin-top:auto; font-size:10.5px; color:var(--color-neutral-500);">
+                <span style="display:flex; align-items:center; gap:4px;"><i class="ph ph-coins"></i>{{ n.budgetLabel }}</span>
+                <span style="display:flex; align-items:center; gap:4px;"><i class="ph ph-user"></i>{{ n.crewLabel }}</span>
+              </div>
+              <sc-if value="{{ n.showProgress }}" hint-placeholder-val="{{ false }}">
+                <div style="height:4px; border-radius:99px; background:var(--color-neutral-900); overflow:hidden; margin-top:8px;"><div style="height:100%; width:{{ n.progressPct }}; background:{{ n.progressColor }}; border-radius:99px;"></div></div>
+              </sc-if>
+            </div>
+          </sc-for>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ DETAIL PANEL ══ -->
+    <sc-if value="{{ detail }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; top:12px; right:12px; width:328px; max-height:calc(100% - 24px); overflow:auto; border-radius:var(--radius-lg); background:var(--color-surface); box-shadow:var(--shadow-lg); border:1px solid var(--color-divider);">
+        <div style="padding:var(--space-4) var(--space-4) var(--space-3);">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
+            <div class="mono" style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-accent-300);">{{ detail.kicker }}</div>
+            <button data-node class="btn btn-icon" onClick="{{ closeDetail }}" style="width:26px; height:26px; margin:-4px -4px 0 0;"><i class="ph ph-x" style="font-size:14px;"></i></button>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+            <span style="{{ detail.iconStyle }}"><i class="ph-fill {{ detail.icon }}" style="font-size:18px;"></i></span>
+            <h4 style="margin:0; font-size:18px; line-height:1.12;">{{ detail.name }}</h4>
+          </div>
+          <span class="mono" style="{{ detail.pillStyle }} margin-top:10px;"><i class="{{ detail.pillIcon }}" style="font-size:11px;"></i>{{ detail.statusLabel }}</span>
+          <p style="font-size:12.5px; line-height:1.5; color:var(--color-neutral-300); margin:12px 0 0;">{{ detail.desc }}</p>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--color-divider); margin:0 var(--space-4);">
+          <div style="background:var(--color-surface); padding:10px 12px;"><div class="mono" style="font-size:9.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-500);">Budget</div><div class="mono" style="font-size:15px; margin-top:3px;">{{ detail.budgetLabel }}</div></div>
+          <div style="background:var(--color-surface); padding:10px 12px;"><div class="mono" style="font-size:9.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-500);">Crew</div><div class="mono" style="font-size:15px; margin-top:3px;">{{ detail.crewLabel }}</div></div>
+        </div>
+
+        <sc-if value="{{ detail.showProgress }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:14px var(--space-4) 0;">
+            <div class="mono" style="display:flex; justify-content:space-between; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-500);"><span>Progress</span><span>{{ detail.progressPct }}</span></div>
+            <div style="height:6px; border-radius:99px; background:var(--color-neutral-900); overflow:hidden; margin-top:6px;"><div style="height:100%; width:{{ detail.progressPct }}; background:{{ detail.progressColor }}; border-radius:99px;"></div></div>
+          </div>
+        </sc-if>
+
+        <div style="padding:14px var(--space-4) var(--space-4);">
+          <sc-if value="{{ detail.hasPrereqs }}" hint-placeholder-val="{{ false }}">
+            <div class="mono" style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-500); margin-bottom:8px;">Requires</div>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px;">
+              <sc-for list="{{ detail.prereqs }}" as="p" hint-placeholder-count="1">
+                <div data-node onClick="{{ p.onClick }}" style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer; padding:5px 8px; border-radius:6px; border:1px solid var(--color-divider);" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent)">
+                  <span style="{{ p.dotStyle }}"></span><span style="flex:1;">{{ p.name }}</span><span class="mono" style="font-size:9.5px; color:var(--color-neutral-500);">{{ p.statusLabel }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ detail.hasUnlocks }}" hint-placeholder-val="{{ false }}">
+            <div class="mono" style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-500); margin-bottom:8px;">Unlocks</div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <sc-for list="{{ detail.unlocks }}" as="u" hint-placeholder-count="1">
+                <div data-node onClick="{{ u.onClick }}" style="display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer; padding:5px 8px; border-radius:6px; border:1px solid var(--color-divider);" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent)">
+                  <span style="{{ u.dotStyle }}"></span><span style="flex:1;">{{ u.name }}</span><span class="mono" style="font-size:9.5px; color:var(--color-neutral-500);">{{ u.statusLabel }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- legend -->
+    <div style="position:absolute; left:12px; bottom:12px; display:flex; gap:14px; flex-wrap:wrap; padding:8px 12px; border-radius:var(--radius-md); background:color-mix(in srgb, var(--color-surface) 82%, transparent); backdrop-filter:blur(6px); border:1px solid var(--color-divider);">
+      <sc-for list="{{ legend }}" as="l" hint-placeholder-count="5">
+        <div class="mono" style="display:flex; align-items:center; gap:6px; font-size:10px; letter-spacing:0.06em; color:var(--color-neutral-400); text-transform:uppercase;">
+          <span style="{{ l.dotStyle }}"></span>{{ l.label }}
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { selected: null, statusFilter: 'all', laneFilter: null, zoom: 0.86 };
+
+  // ── layout constants ──
+  L = { LABEL_W: 150, PAD_X: 22, HEADER_H: 52, LANE_H: 150, COL_W: 250, NODE_W: 202, NODE_H: 108, PAD_R: 40 };
+
+  LANES = [
+    { id:'platform', name:'Platform & Infra',  icon:'ph-stack' },
+    { id:'ai',       name:'AI & Intelligence', icon:'ph-brain' },
+    { id:'product',  name:'Product & Growth',  icon:'ph-rocket-launch' },
+    { id:'data',     name:'Data & Analytics',  icon:'ph-chart-line-up' },
+    { id:'security', name:'Trust & Security',  icon:'ph-shield-check' },
+  ];
+
+  TIERS = [
+    { label:'SHIPPED',  sub:'Foundations' },
+    { label:'Q3 2026',  sub:'In flight' },
+    { label:'Q4 2026',  sub:'Committed' },
+    { label:'H1 2027',  sub:'Planned' },
+    { label:'HORIZON',  sub:'Vision' },
+  ];
+
+  DATA = [
+    // platform
+    { id:'p1', lane:'platform', tier:0, name:'Kubernetes Migration', status:'done', budget:1.2, crew:6, prereqs:[], desc:'All services containerized and running on managed K8s with GitOps deploys. The base every other lane builds on.' },
+    { id:'p2', lane:'platform', tier:1, name:'Multi-region Failover', status:'active', budget:0.9, crew:5, progress:60, prereqs:['p1'], desc:'Active-active across two regions with automated failover under 30s. In build with the SRE pod.' },
+    { id:'p3', lane:'platform', tier:2, name:'Edge Compute Fabric', status:'ready', budget:1.5, crew:0, prereqs:['p2'], desc:'Push compute to edge PoPs for latency-sensitive workloads. Scoped and staffed, ready to kick off once failover lands.' },
+    { id:'p4', lane:'platform', tier:4, name:'Self-healing Infra', status:'locked', budget:2.0, crew:0, prereqs:['p3'], desc:'Closed-loop remediation that detects, diagnoses and repairs without a human. Depends on edge fabric maturity.' },
+    // ai
+    { id:'a1', lane:'ai', tier:0, name:'Feature Store', status:'done', budget:0.7, crew:4, prereqs:[], desc:'Central, versioned feature store shared across training and serving. Shipped and adopted by three teams.' },
+    { id:'a2', lane:'ai', tier:1, name:'Realtime Inference', status:'active', budget:1.1, crew:7, progress:40, prereqs:['a1'], desc:'Sub-100ms online inference with autoscaling GPU pools. Model gateway is live; rollout to production paths underway.' },
+    { id:'a3', lane:'ai', tier:2, name:'Agentic Workflows', status:'ready', budget:1.8, crew:0, prereqs:['a2','p2'], desc:'Tool-using agents orchestrating multi-step internal workflows. Needs realtime inference and multi-region resilience first.' },
+    { id:'a4', lane:'ai', tier:3, name:'Foundation Model Finetune', status:'locked', budget:3.0, crew:0, prereqs:['a3'], desc:'Domain-adapted foundation model on proprietary data. Largest single investment on the board.' },
+    { id:'a5', lane:'ai', tier:4, name:'Autonomous Ops Copilot', status:'locked', budget:2.5, crew:0, prereqs:['a4','p4'], desc:'A copilot that plans and executes ops changes end-to-end. The lane\u2019s capstone \u2014 gated on the finetune and self-healing infra.' },
+    // product
+    { id:'g1', lane:'product', tier:0, name:'Onboarding Revamp', status:'done', budget:0.4, crew:3, prereqs:[], desc:'Rebuilt first-run flow lifted activation 18%. Done and measured.' },
+    { id:'g2', lane:'product', tier:1, name:'Usage-based Billing', status:'active', budget:0.6, crew:4, progress:75, prereqs:['g1'], desc:'Metered billing with real-time usage caps. In final QA before GA.' },
+    { id:'g3', lane:'product', tier:2, name:'Self-serve Enterprise', status:'risk', budget:0.9, crew:5, progress:45, prereqs:['g2'], desc:'Enterprise plans purchasable without sales touch. At risk \u2014 blocked on procurement/SSO requirements and slipping this quarter.' },
+    { id:'g4', lane:'product', tier:3, name:'Partner Marketplace', status:'locked', budget:1.2, crew:0, prereqs:['g3','a3'], desc:'Third-party apps and revenue share. Needs self-serve enterprise plus agentic workflows to power integrations.' },
+    // data
+    { id:'d1', lane:'data', tier:0, name:'Warehouse Consolidation', status:'done', budget:0.8, crew:4, prereqs:[], desc:'Collapsed three warehouses into one governed lakehouse. Complete.' },
+    { id:'d2', lane:'data', tier:1, name:'Streaming Pipeline', status:'active', budget:0.7, crew:5, progress:50, prereqs:['d1','p1'], desc:'Exactly-once streaming ingestion feeding the lakehouse. Backfill in progress on the new K8s base.' },
+    { id:'d3', lane:'data', tier:2, name:'Semantic Metrics Layer', status:'ready', budget:0.5, crew:0, prereqs:['d2'], desc:'One governed definition per metric, consumed by BI and product. Ready to start.' },
+    { id:'d4', lane:'data', tier:3, name:'Predictive Analytics', status:'locked', budget:1.4, crew:0, prereqs:['d3','a2'], desc:'Forecasting and churn models surfaced in-product. Depends on the metrics layer and realtime inference.' },
+    // security
+    { id:'s1', lane:'security', tier:0, name:'SOC 2 Type II', status:'done', budget:0.3, crew:2, prereqs:[], desc:'Clean SOC 2 Type II report. Unblocks enterprise deals.' },
+    { id:'s2', lane:'security', tier:1, name:'Zero-trust Network', status:'active', budget:0.65, crew:4, progress:30, prereqs:['s1'], desc:'Identity-aware access replacing the VPN. Rollout to first cohorts underway.' },
+    { id:'s3', lane:'security', tier:3, name:'SSO + SCIM Everywhere', status:'ready', budget:0.5, crew:0, prereqs:['s2'], desc:'Enterprise SSO and directory sync across all surfaces. Ready \u2014 and a hard dependency for self-serve enterprise.' },
+    { id:'s4', lane:'security', tier:4, name:'Confidential Compute', status:'locked', budget:1.8, crew:0, prereqs:['s3','p3'], desc:'Encrypted-in-use workloads on trusted enclaves. Needs SSO coverage and edge fabric.' },
+  ];
+
+  STATUS = {
+    done:   { label:'Completed',   icon:'ph-fill ph-check-circle', border:'var(--color-accent-600)', bg:'var(--color-accent-900)', iconColor:'var(--color-accent-200)', iconBg:'var(--color-accent-800)', dot:'var(--color-accent-400)', shadow:'0 0 0 1px var(--color-accent-700), 0 6px 18px rgba(0,0,0,0.45)' },
+    active: { label:'In Progress', icon:'ph ph-circle-notch',      border:'var(--color-accent)',     bg:'var(--color-surface)',    iconColor:'var(--color-accent)',      iconBg:'color-mix(in srgb, var(--color-accent) 16%, transparent)', dot:'var(--color-accent)', anim:'nodePulse 2.6s ease-in-out infinite' },
+    ready:  { label:'Ready',       icon:'ph ph-lock-simple-open',  border:'var(--color-accent-700)', bg:'var(--color-surface)',    iconColor:'var(--color-accent-300)',  iconBg:'color-mix(in srgb, var(--color-accent) 10%, transparent)', dot:'var(--color-accent-600)', dashed:true, shadow:'var(--shadow-sm)' },
+    locked: { label:'Locked',      icon:'ph ph-lock-simple',       border:'var(--color-neutral-800)',bg:'#181a26',                 iconColor:'var(--color-neutral-600)', iconBg:'var(--color-neutral-900)', dot:'var(--color-neutral-700)', shadow:'none', dim:true },
+    risk:   { label:'At Risk',     icon:'ph-fill ph-warning',      border:'#d6a24e',                 bg:'var(--color-surface)',    iconColor:'#e6cd97',                  iconBg:'rgba(214,162,78,0.14)', dot:'#d6a24e', anim:'nodePulseWarn 2.4s ease-in-out infinite' },
+  };
+
+  // ── helpers ──
+  fmtM(v){ return '$' + v.toFixed(1) + 'M'; }
+  laneMeta(id){ return this.LANES.find(l => l.id === id); }
+  node(id){ return this.DATA.find(n => n.id === id); }
+  laneIndex(id){ return this.LANES.findIndex(l => l.id === id); }
+  nx(n){ const {LABEL_W,PAD_X,COL_W,NODE_W} = this.L; return LABEL_W + PAD_X + n.tier*COL_W + (COL_W-NODE_W)/2; }
+  ny(n){ const {HEADER_H,LANE_H,NODE_H} = this.L; return HEADER_H + this.laneIndex(n.lane)*LANE_H + (LANE_H-NODE_H)/2; }
+
+  isActiveSpend(s){ return s==='done' || s==='active' || s==='risk'; }
+
+  isDimmed(n){
+    const { statusFilter, laneFilter, selected } = this.state;
+    if (selected === n.id) return false;
+    if (statusFilter !== 'all' && n.status !== statusFilter) return true;
+    if (laneFilter && n.lane !== laneFilter) return true;
+    return false;
+  }
+
+  pillStyle(st){
+    return `display:inline-flex; align-items:center; gap:4px; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 7px; border-radius:5px; background:${st.iconBg}; color:${st.iconColor};`;
+  }
+
+  select(id){ this.setState(s => ({ selected: s.selected === id ? null : id })); }
+
+  componentDidMount(){
+    this._mm = (e) => {
+      if (!this._pan || !this.canvasEl) return;
+      this.canvasEl.scrollLeft = this._pan.sl - (e.clientX - this._pan.x);
+      this.canvasEl.scrollTop  = this._pan.st - (e.clientY - this._pan.y);
+    };
+    this._mu = () => { if (this._pan){ this._pan = null; if (this.canvasEl) this.canvasEl.style.cursor='grab'; } };
+    window.addEventListener('mousemove', this._mm);
+    window.addEventListener('mouseup', this._mu);
+    this.zoomFit();
+  }
+  componentWillUnmount(){ window.removeEventListener('mousemove', this._mm); window.removeEventListener('mouseup', this._mu); }
+
+  contentW(){ const {LABEL_W,PAD_X,COL_W,PAD_R} = this.L; return LABEL_W + PAD_X + this.TIERS.length*COL_W + PAD_R; }
+  contentH(){ const {HEADER_H,LANE_H} = this.L; return HEADER_H + this.LANES.length*LANE_H; }
+
+  renderVals(){
+    const S = this.state, L = this.L;
+    const contentW = this.contentW(), contentH = this.contentH();
+
+    // ── HUD ──
+    const total = this.DATA.reduce((a,n)=>a+n.budget,0);
+    const alloc = this.DATA.filter(n=>this.isActiveSpend(n.status)).reduce((a,n)=>a+n.budget,0);
+    const crewCap = 80;
+    const crew = this.DATA.reduce((a,n)=>a+(this.isActiveSpend(n.status)?n.crew:0),0);
+    const doneCount = this.DATA.filter(n=>n.status==='done').length;
+    const hud = {
+      level: 'L' + String(doneCount).padStart(2,'0'),
+      mileLabel: doneCount + ' / ' + this.DATA.length + ' milestones',
+      mileXp: Math.round(doneCount/this.DATA.length*100) + '%',
+      budgetLabel: this.fmtM(alloc) + ' / ' + this.fmtM(total),
+      budgetPct: Math.round(alloc/total*100) + '%',
+      crewLabel: crew + ' / ' + crewCap + ' engineers',
+      crewPct: Math.round(crew/crewCap*100) + '%',
+    };
+
+    // ── lane resource strip ──
+    const laneStrip = this.LANES.map(lane => {
+      const ns = this.DATA.filter(n=>n.lane===lane.id);
+      const laneTotal = ns.reduce((a,n)=>a+n.budget,0);
+      const laneActive = ns.filter(n=>this.isActiveSpend(n.status)).reduce((a,n)=>a+n.budget,0);
+      const laneCrew = ns.filter(n=>this.isActiveSpend(n.status)).reduce((a,n)=>a+n.crew,0);
+      const on = S.laneFilter === lane.id;
+      return {
+        id: lane.id, name: lane.name, icon: lane.icon,
+        pctLabel: Math.round(laneTotal/total*100) + '%',
+        pct: Math.round(laneTotal/total*100) + '%',
+        spendLabel: this.fmtM(laneActive), crewLabel: laneCrew,
+        onClick: () => this.setState(s => ({ laneFilter: s.laneFilter===lane.id ? null : lane.id })),
+        cardStyle: `cursor:pointer; padding:12px 13px; border-radius:var(--radius-md); background:var(--color-surface); border:1px solid ${on?'var(--color-accent)':'var(--color-divider)'}; box-shadow:${on?'0 0 16px rgba(145,132,217,0.22)':'none'}; transition:border-color .15s, box-shadow .15s;`,
+      };
+    });
+
+    // ── status filters ──
+    const order = ['all','done','active','ready','risk','locked'];
+    const fLabel = { all:'All', done:'Done', active:'Active', ready:'Ready', risk:'At Risk', locked:'Locked' };
+    const statusFilters = order.map(id => {
+      const on = S.statusFilter === id;
+      const st = this.STATUS[id];
+      const count = id==='all' ? this.DATA.length : this.DATA.filter(n=>n.status===id).length;
+      return {
+        id, label: fLabel[id], count,
+        onClick: () => this.setState(s => ({ statusFilter: s.statusFilter===id ? 'all' : id })),
+        dotStyle: st ? `display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; background:${st.dot};` : 'display:none;',
+        style: `display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-family:var(--font-heading); font-size:12px; padding:7px 12px; background:${on?'color-mix(in srgb, var(--color-accent) 16%, transparent)':'transparent'}; color:${on?'var(--color-accent)':'var(--color-text)'}; border:none; border-right:1px solid var(--color-divider);`,
+      };
+    });
+
+    // ── tier headers ──
+    const tierHeaders = this.TIERS.map((t,i) => ({
+      label: t.label, sub: t.sub,
+      style: `position:absolute; top:12px; left:${L.LABEL_W + L.PAD_X + i*L.COL_W}px; width:${L.COL_W}px; text-align:center;`,
+    }));
+
+    // ── lane bands + tabs ──
+    const laneBands = this.LANES.map((lane,i) => ({
+      style: `position:absolute; left:0; top:${L.HEADER_H + i*L.LANE_H}px; width:${contentW}px; height:${L.LANE_H}px; background:${i%2? 'rgba(255,255,255,0.012)':'transparent'}; border-top:1px solid var(--color-divider);`,
+    }));
+    const laneTabs = this.LANES.map((lane,i) => ({
+      icon: lane.icon, name: lane.name,
+      style: `position:absolute; left:14px; top:${L.HEADER_H + i*L.LANE_H + (L.LANE_H-64)/2}px; width:${L.LABEL_W-24}px; height:64px; display:flex; flex-direction:column; gap:8px; justify-content:center;`,
+    }));
+
+    // ── nodes ──
+    const nodes = this.DATA.map(n => {
+      const st = this.STATUS[n.status];
+      const sel = S.selected === n.id;
+      const dim = this.isDimmed(n);
+      let shadow = st.shadow || 'none';
+      let anim = 'none';
+      if (sel) { shadow = '0 0 0 2px var(--color-accent), 0 0 30px rgba(145,132,217,0.55)'; }
+      else if (st.anim) { anim = st.anim; }
+      const boxStyle = [
+        'position:absolute', `left:${this.nx(n)}px`, `top:${this.ny(n)}px`,
+        `width:${L.NODE_W}px`, `height:${L.NODE_H}px`,
+        'display:flex', 'flex-direction:column', 'padding:11px 13px',
+        'border-radius:var(--radius-md)', `border:1px ${st.dashed?'dashed':'solid'} ${st.border}`,
+        `background:${st.bg}`, `box-shadow:${shadow}`, `animation:${anim}`,
+        'cursor:pointer', 'z-index:2', `opacity:${dim?0.28:1}`,
+        'transition:opacity .18s, transform .12s, box-shadow .18s',
+      ].join(';');
+      return {
+        id: n.id, name: n.name, icon: this.laneMeta(n.lane).icon,
+        statusLabel: st.label, pillIcon: st.icon,
+        budgetLabel: this.fmtM(n.budget), crewLabel: n.crew>0 ? (n.crew+'') : '\u2014',
+        showProgress: n.status==='active' || n.status==='risk',
+        progressPct: (n.progress||0) + '%',
+        progressColor: n.status==='risk' ? '#d6a24e' : 'var(--color-accent)',
+        onClick: () => this.select(n.id),
+        boxStyle,
+        hoverStyle: dim ? 'opacity:0.55' : 'transform:translateY(-2px)',
+        titleStyle: `font-family:var(--font-heading); font-size:14px; line-height:1.16; margin-top:9px; color:${n.status==='locked'?'var(--color-neutral-500)':'var(--color-text)'};`,
+        iconStyle: `width:30px; height:30px; flex:none; display:grid; place-items:center; border-radius:7px; background:${st.iconBg}; color:${st.iconColor};`,
+        pillStyle: this.pillStyle(st),
+      };
+    });
+
+    // ── connectors ──
+    const connectors = [];
+    this.DATA.forEach(n => {
+      (n.prereqs||[]).forEach(pid => {
+        const p = this.node(pid); if (!p) return;
+        const x1 = this.nx(p) + L.NODE_W, y1 = this.ny(p) + L.NODE_H/2;
+        const x2 = this.nx(n),            y2 = this.ny(n) + L.NODE_H/2;
+        const mx = (x1 + x2) / 2;
+        const active = S.selected && (n.id===S.selected || pid===S.selected);
+        const bothDone = p.status==='done' && n.status==='done';
+        connectors.push({
+          key: pid + '>' + n.id,
+          d: `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`,
+          stroke: active ? 'var(--color-accent)' : (bothDone ? 'var(--color-accent-700)' : 'rgba(147,151,171,0.26)'),
+          width: active ? 2.5 : 1.75,
+          dash: active ? '6 6' : 'none',
+          style: active ? 'animation:flow 0.9s linear infinite; filter:drop-shadow(0 0 5px rgba(145,132,217,0.6));' : '',
+        });
+      });
+    });
+
+    // ── zoom + canvas ──
+    const z = S.zoom;
+    const sizerStyle = `width:${contentW*z}px; height:${contentH*z}px;`;
+    const innerStyle = `position:relative; width:${contentW}px; height:${contentH}px; transform:scale(${z}); transform-origin:top left;`;
+    const svgStyle = `position:absolute; top:0; left:0; z-index:1; pointer-events:none; overflow:visible;`;
+
+    // ── detail ──
+    let detail = null;
+    if (S.selected) {
+      const n = this.node(S.selected);
+      if (n) {
+        const st = this.STATUS[n.status];
+        const dot = s => `display:inline-block; width:8px; height:8px; border-radius:50%; flex:none; background:${this.STATUS[s].dot};`;
+        const prereqs = (n.prereqs||[]).map(pid => { const p = this.node(pid); return { name:p.name, statusLabel:this.STATUS[p.status].label, dotStyle:dot(p.status), onClick:()=>this.setState({selected:pid}) }; });
+        const unlocks = this.DATA.filter(d => (d.prereqs||[]).includes(n.id)).map(u => ({ name:u.name, statusLabel:this.STATUS[u.status].label, dotStyle:dot(u.status), onClick:()=>this.setState({selected:u.id}) }));
+        detail = {
+          name: n.name, icon: this.laneMeta(n.lane).icon,
+          kicker: this.laneMeta(n.lane).name + '  \u00b7  ' + this.TIERS[n.tier].label,
+          statusLabel: st.label, pillIcon: st.icon, desc: n.desc,
+          budgetLabel: this.fmtM(n.budget), crewLabel: n.crew>0 ? (n.crew + ' eng') : 'Unstaffed',
+          showProgress: n.status==='active' || n.status==='risk', progressPct: (n.progress||0)+'%',
+          progressColor: n.status==='risk' ? '#d6a24e' : 'var(--color-accent)',
+          iconStyle: `width:38px; height:38px; flex:none; display:grid; place-items:center; border-radius:9px; background:${st.iconBg}; color:${st.iconColor};`,
+          pillStyle: this.pillStyle(st),
+          hasPrereqs: prereqs.length>0, prereqs,
+          hasUnlocks: unlocks.length>0, unlocks,
+        };
+      }
+    }
+
+    // ── legend ──
+    const legend = ['done','active','ready','risk','locked'].map(id => ({
+      label: this.STATUS[id].label,
+      dotStyle: `display:inline-block; width:8px; height:8px; border-radius:50%; background:${this.STATUS[id].dot};`,
+    }));
+
+    return {
+      org: 'NORTHWIND', sub: 'FY26\u201327 Investment Tech Tree',
+      hud, laneStrip, statusFilters, tierHeaders, laneBands, laneTabs, nodes, connectors, legend,
+      contentW, contentH, sizerStyle, innerStyle, svgStyle,
+      detail, closeDetail: () => this.setState({ selected: null }),
+      filterActive: S.statusFilter !== 'all' || S.laneFilter !== null,
+      resetFilters: () => this.setState({ statusFilter: 'all', laneFilter: null }),
+      zoomLabel: Math.round(z*100) + '%',
+      zoomIn: () => this.setState(s => ({ zoom: Math.min(1.4, +(s.zoom+0.1).toFixed(2)) })),
+      zoomOut: () => this.setState(s => ({ zoom: Math.max(0.5, +(s.zoom-0.1).toFixed(2)) })),
+      zoomFit: () => this.zoomFit(),
+      setCanvas: (el) => { this.canvasEl = el; },
+      onCanvasDown: (e) => {
+        if (e.target.closest('[data-node]')) return;
+        this._pan = { x:e.clientX, y:e.clientY, sl:this.canvasEl.scrollLeft, st:this.canvasEl.scrollTop };
+        this.canvasEl.style.cursor = 'grabbing';
+        e.preventDefault();
+      },
+    };
+  }
+
+  zoomFit(){
+    if (!this.canvasEl) return;
+    const avail = this.canvasEl.clientWidth - 4;
+    const z = Math.max(0.5, Math.min(1.1, +(avail / this.contentW()).toFixed(3)));
+    this.setState({ zoom: z });
+  }
+}
+</script>
+</body>
+</html>

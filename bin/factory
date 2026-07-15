@@ -1,0 +1,789 @@
+#!/usr/bin/env python3
+"""Factory CLI — install the skill suite and manage cron-style Factory agents.
+
+Two sections:
+  * skills  — copy the factory-* skills into your Claude Code user skills dir.
+  * agents  — install/update/remove cron-style agents (e.g. the AI PM) per repo.
+
+Stdlib only. Run `factory` with no arguments for an interactive menu, or use the
+subcommands below. See `factory --help`.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import platform
+import shutil
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SKILLS_SRC = REPO_ROOT / "skills"
+AGENTS_SRC = REPO_ROOT / "agents"
+
+SKILLS_DEST = Path(os.environ.get("CLAUDE_SKILLS_DIR", Path.home() / ".claude" / "skills"))
+FACTORY_HOME = Path(os.environ.get("FACTORY_HOME", Path.home() / ".claude" / "factory"))
+INSTALLED_JSON = FACTORY_HOME / "installed-agents.json"
+
+IS_MAC = platform.system() == "Darwin"
+
+
+# ---------------------------------------------------------------------------
+# Small helpers
+# ---------------------------------------------------------------------------
+def now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def say(msg: str = "") -> None:
+    print(msg)
+
+
+def die(msg: str) -> "NoReturn":  # type: ignore[name-defined]
+    print(f"error: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def hash_paths(paths: list[Path]) -> str:
+    """Stable content hash over a set of files (path + bytes)."""
+    h = hashlib.sha1()
+    for p in sorted(paths, key=lambda x: str(x)):
+        if p.is_file():
+            h.update(str(p.name).encode())
+            h.update(p.read_bytes())
+    return h.hexdigest()
+
+
+def hash_dir(d: Path) -> str:
+    if not d.is_dir():
+        return ""
+    files = [p for p in d.rglob("*") if p.is_file() and ".bak-" not in str(p)]
+    h = hashlib.sha1()
+    for p in sorted(files, key=lambda x: str(x.relative_to(d))):
+        h.update(str(p.relative_to(d)).encode())
+        h.update(p.read_bytes())
+    return h.hexdigest()
+
+
+def load_json(path: Path, default):
+    try:
+        return json.loads(path.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default
+
+
+def save_json(path: Path, data) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2) + "\n")
+
+
+def claude_bin() -> str | None:
+    return shutil.which("claude")
+
+
+WEEK_MINUTES = 10080
+WEEKLY_HOUR = 9          # scheduled runs land at 09:00 local
+WEEKLY_DOW = 1           # cron day-of-week: 1 = Monday
+
+
+def fmt_interval(m: int) -> str:
+    if m == WEEK_MINUTES:
+        return "1w"
+    if m and m % 1440 == 0:
+        return f"{m // 1440}d"
+    if m and m % 60 == 0:
+        return f"{m // 60}h"
+    return f"{m}m"
+
+
+# ---------------------------------------------------------------------------
+# Skills
+# ---------------------------------------------------------------------------
+def list_skill_dirs() -> list[Path]:
+    return sorted(p for p in SKILLS_SRC.iterdir() if p.is_dir())
+
+
+def skills_status() -> list[dict]:
+    rows = []
+    for src in list_skill_dirs():
+        dest = SKILLS_DEST / src.name
+        if not dest.exists():
+            state = "not installed"
+        elif hash_dir(src) == hash_dir(dest):
+            state = "up to date"
+        else:
+            state = "update available"
+        rows.append({"name": src.name, "state": state})
+    return rows
+
+
+def install_cli(ts: str) -> None:
+    """Symlink `factory` onto PATH so it can be run from anywhere."""
+    bindir = Path(os.environ.get("FACTORY_BIN_DIR", Path.home() / ".local" / "bin"))
+    bindir.mkdir(parents=True, exist_ok=True)
+    link = bindir / "factory"
+    target = Path(__file__).resolve()
+    if link.is_symlink() and link.resolve() == target:
+        say(f"  • CLI already linked: {link}")
+    else:
+        if link.is_symlink() or link.exists():
+            backup = link.with_name(f"factory.bak-{ts}")
+            shutil.move(str(link), str(backup))
+        link.symlink_to(target)
+        say(f"  • CLI linked: {link} → {target}")
+    if str(bindir) not in os.environ.get("PATH", "").split(os.pathsep):
+        say(f"  ! {bindir} is not on your PATH — add this to your shell profile:")
+        say(f'        export PATH="{bindir}:$PATH"')
+
+
+def cmd_install(_args=None) -> None:
+    say("Installing Factory skills")
+    say(f"  from: {SKILLS_SRC}")
+    say(f"  to:   {SKILLS_DEST}")
+    SKILLS_DEST.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    # Back up replaced skills OUTSIDE the skills dir, so old copies aren't
+    # re-loaded as phantom skills by Claude Code.
+    backup_dir = FACTORY_HOME / "skill-backups"
+    for src in list_skill_dirs():
+        dest = SKILLS_DEST / src.name
+        if dest.exists():
+            if hash_dir(src) == hash_dir(dest):
+                say(f"  • {src.name} (unchanged)")
+                continue
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            backup = backup_dir / f"{src.name}.bak-{ts}"
+            shutil.move(str(dest), str(backup))
+            say(f"  • {src.name} (updated → backed up to skill-backups/{backup.name})")
+        else:
+            say(f"  • {src.name} (new)")
+        shutil.copytree(src, dest)
+    say("")
+    say("Installing CLI")
+    install_cli(ts)
+    say("")
+    say(f"Done. {len(list_skill_dirs())} skills in {SKILLS_DEST}.")
+
+
+def cmd_update(_args=None) -> None:
+    """git pull the factory checkout, then re-install changed skills."""
+    if (REPO_ROOT / ".git").exists():
+        say("Pulling latest factory…")
+        res = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "pull", "--ff-only"],
+            capture_output=True, text=True,
+        )
+        say("  " + (res.stdout or res.stderr).strip().replace("\n", "\n  "))
+        if res.returncode != 0:
+            say("  (pull failed — installing what's on disk anyway)")
+    else:
+        say("Not a git checkout — installing what's on disk.")
+    say("")
+    before = {r["name"]: r["state"] for r in skills_status()}
+    cmd_install()
+    changed = [n for n, s in before.items() if s != "up to date"]
+    say("")
+    say("Updated: " + (", ".join(changed) if changed else "nothing (all up to date)."))
+
+
+def cmd_status(_args=None) -> None:
+    say("Skills:")
+    for r in skills_status():
+        say(f"  {r['state']:>18}  {r['name']}")
+    say("")
+    say("Agents:")
+    installed = load_json(INSTALLED_JSON, [])
+    reg = {a["id"]: a for a in load_registry()}
+    if not installed:
+        say("  (none installed)")
+    for rec in installed:
+        cur = reg.get(rec["id"], {}).get("source_hash")
+        upd = "  [update available]" if cur and cur != rec.get("source_hash") else ""
+        say(f"  {rec['id']:>16} @ {rec['repo']}  every {fmt_interval(rec['interval'])} ({rec['scheduler']}){upd}")
+
+
+# ---------------------------------------------------------------------------
+# Agent registry
+# ---------------------------------------------------------------------------
+def load_registry() -> list[dict]:
+    agents = []
+    if not AGENTS_SRC.is_dir():
+        return agents
+    for d in sorted(p for p in AGENTS_SRC.iterdir() if p.is_dir()):
+        meta_path = d / "agent.json"
+        if not meta_path.is_file():
+            continue
+        meta = json.loads(meta_path.read_text())
+        prompt_path = d / meta.get("prompt_file", "prompt.md")
+        meta["source_dir"] = str(d)
+        meta["prompt_path"] = str(prompt_path)
+        meta["source_hash"] = hash_paths([meta_path, prompt_path])
+        agents.append(meta)
+    return agents
+
+
+def find_agent(agent_id: str) -> dict:
+    for a in load_registry():
+        if a["id"] == agent_id:
+            return a
+    die(f"unknown agent '{agent_id}'. Available: {', '.join(a['id'] for a in load_registry()) or 'none'}")
+
+
+def repo_slug(repo: Path) -> str:
+    return f"{repo.name}-{hashlib.sha1(str(repo).encode()).hexdigest()[:8]}"
+
+
+def instance_key(agent_id: str, slug: str) -> str:
+    return f"{agent_id}@{slug}"
+
+
+def instance_dir(agent_id: str, slug: str) -> Path:
+    return FACTORY_HOME / "agents" / instance_key(agent_id, slug)
+
+
+# ---------------------------------------------------------------------------
+# Scheduler abstraction (crontab on Linux, launchd on macOS)
+# ---------------------------------------------------------------------------
+def _cron_marker(key: str) -> str:
+    return f"# factory-agent:{key}"
+
+
+def _read_crontab() -> list[str]:
+    res = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+    if res.returncode != 0:
+        return []  # no crontab yet
+    return res.stdout.splitlines()
+
+
+def _write_crontab(lines: list[str]) -> None:
+    payload = ("\n".join(lines).rstrip() + "\n") if lines else "\n"
+    subprocess.run(["crontab", "-"], input=payload, text=True, check=True)
+
+
+def schedule_install(key: str, wrapper: Path, interval: int, log: Path) -> str:
+    if IS_MAC:
+        label = f"io.factory.{key.replace('@', '.')}"
+        plist = Path.home() / "Library" / "LaunchAgents" / f"{label}.plist"
+        plist.parent.mkdir(parents=True, exist_ok=True)
+        plist.write_text(f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>{label}</string>
+  <key>ProgramArguments</key><array><string>{wrapper}</string></array>
+  <key>StartInterval</key><integer>{interval * 60}</integer>
+  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>{log}</string>
+  <key>StandardErrorPath</key><string>{log}</string>
+</dict>
+</plist>
+""")
+        subprocess.run(["launchctl", "unload", str(plist)], capture_output=True)
+        subprocess.run(["launchctl", "load", str(plist)], check=True)
+        return label
+    # Linux: crontab — sub-hour, hourly, daily and weekly cadences.
+    if interval < 1:
+        die("interval must be at least 1 minute")
+    if interval < 60:
+        when = f"*/{interval} * * * *"
+    elif interval == WEEK_MINUTES:
+        # Weekly must be day-of-week. `*/7` in the day-of-month field would mean
+        # "the 1st, 8th, 15th, 22nd and 29th", which restarts every month — the
+        # 29th is followed by the 1st three days later, and the weekday drifts.
+        # A weekly report has to land on the same day each week.
+        when = f"0 {WEEKLY_HOUR} * * {WEEKLY_DOW}"
+    elif interval % 1440 == 0:
+        days = interval // 1440
+        if days != 1:
+            # Same day-of-month trap as above; only 1 and 7 are expressible in cron.
+            die(f"a {days}-day interval can't be expressed in cron without drifting at "
+                "month boundaries — use 1440 (daily) or 10080 (weekly).")
+        when = f"0 {WEEKLY_HOUR} * * *"
+    elif interval % 60 == 0 and interval < 1440:
+        when = f"0 */{interval // 60} * * *"
+    else:
+        die("crontab interval must be under 60 minutes, a whole number of hours, "
+            "1440 (daily), or 10080 (weekly)")
+    marker = _cron_marker(key)
+    lines = [l for l in _read_crontab() if marker not in l]
+    lines.append(f'{when} "{wrapper}" {marker}')
+    _write_crontab(lines)
+    return marker
+
+
+def schedule_remove(key: str, scheduler: str) -> None:
+    if scheduler == "launchd":
+        label = f"io.factory.{key.replace('@', '.')}"
+        plist = Path.home() / "Library" / "LaunchAgents" / f"{label}.plist"
+        subprocess.run(["launchctl", "unload", str(plist)], capture_output=True)
+        plist.unlink(missing_ok=True)
+    else:
+        marker = _cron_marker(key)
+        lines = [l for l in _read_crontab() if marker not in l]
+        _write_crontab(lines)
+
+
+# ---------------------------------------------------------------------------
+# Agent install / update / remove
+# ---------------------------------------------------------------------------
+def _write_wrapper(idir: Path, repo: Path, prompt_path: Path, log: Path) -> Path:
+    wrapper = idir / "run.sh"
+    cb = claude_bin() or "claude"
+    cdir = str(Path(cb).parent) if claude_bin() else ""
+    path_prefix = f'{cdir}:' if cdir else ""
+    wrapper.write_text(f"""#!/usr/bin/env bash
+set -euo pipefail
+export PATH="{path_prefix}$PATH:/usr/local/bin:/usr/bin:/bin"
+cd "{repo}" || exit 1
+echo "=== factory-agent run $(date -u +%Y-%m-%dT%H:%M:%SZ) ===" >> "{log}"
+exec "{cb}" -p "$(cat "{prompt_path}")" --dangerously-skip-permissions >> "{log}" 2>&1
+""")
+    wrapper.chmod(0o755)
+    return wrapper
+
+
+def _upsert_record(rec: dict) -> None:
+    installed = load_json(INSTALLED_JSON, [])
+    installed = [r for r in installed if instance_key(r["id"], r["slug"]) != instance_key(rec["id"], rec["slug"])]
+    installed.append(rec)
+    save_json(INSTALLED_JSON, installed)
+
+
+def _get_record(agent_id: str, slug: str) -> dict | None:
+    for r in load_json(INSTALLED_JSON, []):
+        if r["id"] == agent_id and r["slug"] == slug:
+            return r
+    return None
+
+
+def cmd_agents_install(args) -> None:
+    agent = find_agent(args.agent)
+    repo = Path(args.repo or ".").resolve()
+    if not repo.is_dir():
+        die(f"repo not found: {repo}")
+    if not (repo / "factory").is_dir():
+        die(f"{repo} has no factory/ directory — run /factory-intake there first.")
+
+    # Ensure required per-repo config exists; onboard interactively if not.
+    for rel in agent.get("requires_files", []):
+        if not (repo / rel).exists():
+            setup = agent.get("setup_skill")
+            say(f"{rel} is missing in {repo.name}.")
+            if not setup:
+                die(f"required file {rel} is missing and no setup skill is defined.")
+            cb = claude_bin()
+            if not cb:
+                die("`claude` not found on PATH — install Claude Code, or create "
+                    f"{rel} manually, then re-run.")
+            say(f"Launching Claude Code to run /{setup} …\n")
+            subprocess.run([cb, f"Run the {setup} skill for this repository."], cwd=str(repo))
+            if not (repo / rel).exists():
+                die(f"{rel} still missing after setup — aborting install.")
+
+    slug = repo_slug(repo)
+    key = instance_key(agent["id"], slug)
+    idir = instance_dir(agent["id"], slug)
+    (idir / "logs").mkdir(parents=True, exist_ok=True)
+    log = idir / "logs" / "run.log"
+    prompt_path = idir / "prompt.md"
+    shutil.copyfile(agent["prompt_path"], prompt_path)
+    wrapper = _write_wrapper(idir, repo, prompt_path, log)
+
+    interval = args.interval or agent.get("default_interval_minutes", 5)
+    job_id = schedule_install(key, wrapper, interval, log)
+    scheduler = "launchd" if IS_MAC else "crontab"
+
+    _upsert_record({
+        "id": agent["id"], "title": agent.get("title", agent["id"]),
+        "repo": str(repo), "slug": slug, "interval": interval,
+        "scheduler": scheduler, "job_id": job_id,
+        "source_hash": agent["source_hash"],
+        "wrapper": str(wrapper), "prompt": str(prompt_path), "log": str(log),
+        "installed_at": now_iso(),
+    })
+    say(f"\nInstalled '{agent['id']}' for {repo.name} — every {fmt_interval(interval)} via {scheduler}.")
+    say(f"  logs: {log}")
+
+
+def cmd_agents_update(args) -> None:
+    agent = find_agent(args.agent)
+    repo = Path(args.repo or ".").resolve()
+    slug = repo_slug(repo)
+    rec = _get_record(agent["id"], slug)
+    if not rec:
+        die(f"'{agent['id']}' is not installed for {repo}.")
+    interval = args.interval or rec["interval"]
+    if rec.get("source_hash") == agent["source_hash"] and interval == rec["interval"]:
+        say(f"'{agent['id']}' @ {repo.name} is already up to date.")
+        return
+    idir = instance_dir(agent["id"], slug)
+    prompt_path = idir / "prompt.md"
+    shutil.copyfile(agent["prompt_path"], prompt_path)
+    log = Path(rec["log"])
+    wrapper = _write_wrapper(idir, repo, prompt_path, log)
+    key = instance_key(agent["id"], slug)
+    schedule_remove(key, rec["scheduler"])
+    job_id = schedule_install(key, wrapper, interval, log)
+    rec.update({"source_hash": agent["source_hash"], "interval": interval,
+                "job_id": job_id, "updated_at": now_iso()})
+    _upsert_record(rec)
+    say(f"Updated '{agent['id']}' @ {repo.name} (every {fmt_interval(interval)}).")
+
+
+def cmd_agents_remove(args) -> None:
+    agent_id = args.agent
+    repo = Path(args.repo or ".").resolve()
+    slug = repo_slug(repo)
+    rec = _get_record(agent_id, slug)
+    if not rec:
+        die(f"'{agent_id}' is not installed for {repo}.")
+    schedule_remove(instance_key(agent_id, slug), rec["scheduler"])
+    shutil.rmtree(instance_dir(agent_id, slug), ignore_errors=True)
+    remaining = [r for r in load_json(INSTALLED_JSON, [])
+                 if not (r["id"] == agent_id and r["slug"] == slug)]
+    save_json(INSTALLED_JSON, remaining)
+    say(f"Removed '{agent_id}' @ {repo.name}.")
+
+
+def cmd_agents_list(_args=None) -> None:
+    reg = load_registry()
+    installed = load_json(INSTALLED_JSON, [])
+    say("Available agents:")
+    for a in reg:
+        say(f"  {a['id']:>16}  — {a.get('description', '')}")
+    say("")
+    say("Installed:")
+    if not installed:
+        say("  (none)")
+    by_id = {a["id"]: a for a in reg}
+    for r in installed:
+        cur = by_id.get(r["id"], {}).get("source_hash")
+        upd = "  [update available]" if cur and cur != r.get("source_hash") else ""
+        say(f"  {r['id']} @ {r['repo']}  every {fmt_interval(r['interval'])} ({r['scheduler']}){upd}")
+
+
+# ---------------------------------------------------------------------------
+# Interactive UI — a full-screen curses TUI (plaintext fallback for non-TTY)
+# ---------------------------------------------------------------------------
+def interactive(start: str = "main") -> None:
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        return _basic_menu()
+    try:
+        import curses  # noqa: F401
+        import locale
+    except Exception:
+        return _basic_menu()
+    locale.setlocale(locale.LC_ALL, "")
+    try:
+        curses.wrapper(lambda scr: _App(scr, start).loop())
+    except Exception as e:  # terminal already restored by wrapper
+        say(f"(falling back — TUI error: {e})")
+        _basic_menu()
+
+
+ENTER_KEYS = (10, 13)
+BACK_KEYS = (27, ord("b"), ord("q"))
+
+
+class _App:
+    def __init__(self, scr, start="main"):
+        import curses
+        self.c = curses
+        self.scr = scr
+        self.screen = start
+        self.sel = 0
+        self.entries: list = []
+        curses.curs_set(0)
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_CYAN, -1)                    # accent
+        curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_CYAN)    # selection bar
+        curses.init_pair(3, curses.COLOR_GREEN, -1)                   # ok
+        curses.init_pair(4, curses.COLOR_YELLOW, -1)                  # warn
+        curses.init_pair(5, curses.COLOR_RED, -1)                     # err
+
+    # -- primitives --------------------------------------------------------
+    def _put(self, y, x, text, attr=0):
+        h, w = self.scr.getmaxyx()
+        if y < 0 or y >= h or x >= w:
+            return
+        text = text[: max(0, w - 1 - x)]
+        try:
+            self.scr.addstr(y, x, text, attr)
+        except self.c.error:
+            pass
+
+    def _header(self):
+        c = self.c
+        w = self.scr.getmaxyx()[1]
+        boxw = max(10, w - 4)
+        self._put(0, 2, "╭" + "─" * (boxw - 2) + "╮", c.color_pair(1))
+        self._put(1, 2, "│", c.color_pair(1))
+        self._put(1, boxw + 1, "│", c.color_pair(1))
+        self._put(1, 5, "⚙  FACTORY", c.color_pair(1) | c.A_BOLD)
+        sub = "skills · agents · cron"
+        self._put(1, boxw - len(sub), sub, c.A_DIM)
+        self._put(2, 2, "╰" + "─" * (boxw - 2) + "╯", c.color_pair(1))
+
+    def _footer(self, hints):
+        h = self.scr.getmaxyx()[0]
+        self._put(h - 1, 3, hints, self.c.A_DIM)
+
+    def _row(self, y, text, selected):
+        c = self.c
+        w = self.scr.getmaxyx()[1]
+        if selected:
+            self._put(y, 3, (" ▸ " + text).ljust(w - 6), c.color_pair(2) | c.A_BOLD)
+        else:
+            self._put(y, 3, "   " + text)
+
+    def _ask(self, label, default=""):
+        c = self.c
+        h, w = self.scr.getmaxyx()
+        y = h - 2
+        self._put(y, 2, " " * (w - 4))
+        self._put(y, 3, label, c.color_pair(1) | c.A_BOLD)
+        c.echo(); c.curs_set(1)
+        try:
+            raw = self.scr.getstr(y, 4 + len(label), max(4, w - 8 - len(label)))
+            s = raw.decode(errors="ignore").strip()
+        except Exception:
+            s = ""
+        c.noecho(); c.curs_set(0)
+        return s or default
+
+    def _external(self, fn):
+        """Drop out of curses to run normal stdout work (installs, claude, cron)."""
+        self.c.endwin()
+        print()
+        try:
+            fn()
+        except SystemExit as e:
+            if e.code:
+                print(e.code if isinstance(e.code, str) else "aborted")
+        try:
+            input("\n[enter] to return…")
+        except (EOFError, KeyboardInterrupt):
+            pass
+        self.scr.clear()
+
+    def _nav(self, k, n):
+        if n:
+            if k in (self.c.KEY_UP, ord("k")):
+                self.sel = (self.sel - 1) % n
+            elif k in (self.c.KEY_DOWN, ord("j")):
+                self.sel = (self.sel + 1) % n
+
+    # -- screens -----------------------------------------------------------
+    def _draw_main(self):
+        labels = ["Install / update skills", "Update from git", "Agents", "Status", "Quit"]
+        for i, l in enumerate(labels):
+            self._row(5 + i, l, i == self.sel)
+        self._footer("↑↓ move    ⏎ select    q quit")
+        return len(labels)
+
+    def _draw_agents(self):
+        c = self.c
+        reg = load_registry()
+        installed = load_json(INSTALLED_JSON, [])
+        by_id = {a["id"]: a for a in reg}
+        entries, y = [], 5
+        self._put(y, 3, "AVAILABLE", c.color_pair(1) | c.A_BOLD); y += 1
+        for a in reg:
+            entries.append(("available", a, y)); y += 1
+        y += 1
+        self._put(y, 3, "INSTALLED", c.color_pair(1) | c.A_BOLD); y += 1
+        if not installed:
+            self._put(y, 6, "(none yet)", c.A_DIM); y += 1
+        for r in installed:
+            entries.append(("installed", r, y)); y += 1
+        self.entries = entries
+        for i, (kind, data, ry) in enumerate(entries):
+            sel = i == self.sel
+            if kind == "available":
+                self._row(ry, f"{data['id']}  —  {data.get('title', '')}", sel)
+            else:
+                cur = by_id.get(data["id"], {}).get("source_hash")
+                stale = cur and cur != data.get("source_hash")
+                tail = "● update available" if stale else "· up to date"
+                label = f"{data['id']} @ {Path(data['repo']).name} · {fmt_interval(data['interval'])}"
+                self._row(ry, f"{label:<40}  {tail}", sel)
+        self._footer("↑↓ move   ⏎/i install   u update   r remove   b back")
+        return len(entries)
+
+    def _draw_status(self):
+        c = self.c
+        y = 5
+        self._put(y, 3, "SKILLS", c.color_pair(1) | c.A_BOLD); y += 1
+        for r in skills_status():
+            if r["state"] == "up to date":
+                dot, attr = "●", c.color_pair(3)
+            elif r["state"] == "update available":
+                dot, attr = "●", c.color_pair(4)
+            else:
+                dot, attr = "○", c.A_DIM
+            self._put(y, 5, dot, attr)
+            self._put(y, 7, f"{r['name']:<30}")
+            self._put(y, 39, r["state"], attr)
+            y += 1
+        y += 1
+        self._put(y, 3, "AGENTS", c.color_pair(1) | c.A_BOLD); y += 1
+        installed = load_json(INSTALLED_JSON, [])
+        if not installed:
+            self._put(y, 5, "(none installed)", c.A_DIM); y += 1
+        for r in installed:
+            self._put(y, 5, f"● {r['id']} @ {r['repo']}  · {fmt_interval(r['interval'])} ({r['scheduler']})",
+                      c.color_pair(3))
+            y += 1
+        self._footer("any key / b to go back")
+        return 0
+
+    # -- key handling ------------------------------------------------------
+    def _on_main(self, k):
+        if k in ENTER_KEYS:
+            if self.sel == 0:
+                self._external(cmd_install)
+            elif self.sel == 1:
+                self._external(cmd_update)
+            elif self.sel == 2:
+                self.screen, self.sel = "agents", 0
+            elif self.sel == 3:
+                self.screen, self.sel = "status", 0
+            elif self.sel == 4:
+                return False
+        elif k == ord("q"):
+            return False
+        return True
+
+    def _on_agents(self, k):
+        if k in BACK_KEYS or k == self.c.KEY_LEFT:
+            self.screen, self.sel = "main", 2
+            return True
+        if not self.entries:
+            return True
+        kind, data, _ = self.entries[self.sel]
+        if kind == "available" and (k in ENTER_KEYS or k == ord("i")):
+            repo = self._ask("repo path [.]: ", ".")
+            interval = self._ask("interval min [default]: ")
+            ns = argparse.Namespace(agent=data["id"], repo=repo,
+                                    interval=int(interval) if interval.isdigit() else None)
+            self._external(lambda: cmd_agents_install(ns))
+        elif kind == "installed" and k == ord("u"):
+            interval = self._ask("interval min [keep]: ")
+            ns = argparse.Namespace(agent=data["id"], repo=data["repo"],
+                                    interval=int(interval) if interval.isdigit() else None)
+            self._external(lambda: cmd_agents_update(ns))
+        elif kind == "installed" and k == ord("r"):
+            ns = argparse.Namespace(agent=data["id"], repo=data["repo"])
+            self._external(lambda: cmd_agents_remove(ns))
+        return True
+
+    def loop(self):
+        while True:
+            self.scr.erase()
+            self._header()
+            if self.screen == "main":
+                n = self._draw_main()
+            elif self.screen == "agents":
+                n = self._draw_agents()
+            else:
+                n = self._draw_status()
+            self.scr.refresh()
+            k = self.scr.getch()
+            self._nav(k, n)
+            if self.screen == "main":
+                if not self._on_main(k):
+                    return
+            elif self.screen == "agents":
+                self._on_agents(k)
+            else:  # status
+                if k in BACK_KEYS or k == self.c.KEY_LEFT or k not in (self.c.KEY_UP, self.c.KEY_DOWN):
+                    self.screen, self.sel = "main", 3
+
+
+# Plaintext fallback for non-interactive terminals ---------------------------
+def _basic_menu() -> None:
+    def ask(msg, default=""):
+        try:
+            return input(msg).strip() or default
+        except (EOFError, KeyboardInterrupt):
+            sys.exit(0)
+    while True:
+        say("\nFactory — [1] skills  [2] update  [3] agents  [4] status  [q] quit")
+        ch = ask("> ").lower()
+        if ch in ("q", ""):
+            return
+        if ch == "1":
+            cmd_install()
+        elif ch == "2":
+            cmd_update()
+        elif ch == "3":
+            cmd_agents_list()
+            act = ask("[i]nstall [u]pdate [r]emove [b]ack > ").lower()
+            if act in ("i", "u", "r"):
+                ns = argparse.Namespace(
+                    agent=ask("agent id: "), repo=ask("repo [.]: ", "."),
+                    interval=(lambda v: int(v) if v.isdigit() else None)(ask("interval [default]: ")))
+                fn = {"i": cmd_agents_install, "u": cmd_agents_update, "r": cmd_agents_remove}[act]
+                try:
+                    fn(ns)
+                except SystemExit as e:
+                    if e.code:
+                        say(str(e.code))
+        elif ch == "4":
+            cmd_status()
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="factory", description="Install Factory skills and manage cron-style agents.")
+    sub = p.add_subparsers(dest="cmd")
+
+    sub.add_parser("install", help="copy the factory-* skills into your Claude Code skills dir")
+    sub.add_parser("update", help="git pull the factory checkout, then re-install changed skills")
+    sub.add_parser("status", help="show skill + agent install state and available updates")
+
+    ap = sub.add_parser("agents", help="manage cron-style agents").add_subparsers(dest="acmd")
+    ap.add_parser("list", help="list available and installed agents")
+    for name, fn in (("install", None), ("update", None), ("remove", None)):
+        sp = ap.add_parser(name, help=f"{name} an agent for a repo")
+        sp.add_argument("agent", help="agent id (e.g. ai-pm)")
+        sp.add_argument("repo", nargs="?", default=".", help="target repo (default: cwd)")
+        if name != "remove":
+            sp.add_argument("--interval", type=int, help="run interval in minutes")
+    return p
+
+
+def main(argv: list[str]) -> None:
+    args = build_parser().parse_args(argv)
+    if args.cmd is None:
+        interactive()
+        return
+    if args.cmd == "install":
+        cmd_install(args)
+    elif args.cmd == "update":
+        cmd_update(args)
+    elif args.cmd == "status":
+        cmd_status(args)
+    elif args.cmd == "agents":
+        dispatch = {
+            "list": cmd_agents_list, "install": cmd_agents_install,
+            "update": cmd_agents_update, "remove": cmd_agents_remove,
+        }
+        if args.acmd is None:
+            interactive(start="agents")
+        else:
+            dispatch[args.acmd](args)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

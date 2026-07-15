@@ -1,29 +1,17 @@
 #!/usr/bin/env bash
 # Install the Factory skill suite into your Claude Code user skills directory.
+# Thin wrapper around the Factory CLI (bin/factory). For agents and updates use
+# the CLI directly:  bin/factory update   |   bin/factory agents install ai-pm
 set -euo pipefail
 
-DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/skills" && pwd)"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "Installing Factory skills"
-echo "  from: $SRC"
-echo "  to:   $DEST"
-mkdir -p "$DEST"
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "error: python3 is required to run the Factory CLI." >&2
+  exit 1
+fi
 
-ts="$(date +%Y%m%d-%H%M%S)"
-for skill in "$SRC"/*/; do
-  name="$(basename "$skill")"
-  target="$DEST/$name"
-  if [ -e "$target" ]; then
-    backup="$target.bak-$ts"
-    echo "  • $name (existing → backed up to $(basename "$backup"))"
-    mv "$target" "$backup"
-  else
-    echo "  • $name"
-  fi
-  cp -r "$skill" "$target"
-done
+exec python3 "$HERE/bin/factory" install
 
-echo
-echo "Done. Installed: $(find "$SRC" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ') skills."
-echo "Start in any repo with:  /factory-intake   (then later)  /goal /factory-execute <issue>"
+# Tip: symlink the CLI onto your PATH so you can run `factory ...` anywhere:
+#   ln -sf "$HERE/bin/factory" ~/.local/bin/factory

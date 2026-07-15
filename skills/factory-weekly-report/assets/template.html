@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cyber">
+<head>
+<meta charset="utf-8">
+<title>Weekly Report</title>
+<!--@fonts--><link rel="stylesheet" href="fonts.css">
+<!--@theme--><link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<!--@sprite-->
+<div id="report"></div>
+
+<script>
+// Injected by render.py. The fallback keeps this file openable on its own
+// during design work — `python3 scripts/render.py --sample` writes it out.
+window.REPORT_DATA = window.REPORT_DATA || null; //@data
+</script>
+
+<script>
+/* Weekly report renderer.
+ *
+ * Static by design: no pan, zoom, filters or detail panel. The source this grew
+ * from was an interactive dashboard; a screenshot keeps none of that, and every
+ * interactive affordance left in is a control that renders as dead chrome in the
+ * image. What survives is what carries meaning on a flat page.
+ *
+ * Everything is laid out in absolute px against the M metrics below so the image
+ * is deterministic — no flex reflow between runs, and the connector maths and the
+ * card positions read from the same numbers.
+ */
+/* CARD_H fits a two-line title plus the meta row. The design this came from used
+ * 82px, which clipped any title that wrapped ("Foundation Model Finetune" ran
+ * under its own metrics) — real tracker titles wrap far more often than the
+ * hand-written fixture did. */
+const M = { RAIL_W: 176, COL_W: 240, ROW_H: 136, HEAD_H: 46, CARD_W: 200, CARD_H: 94, PAD_X: 28, PAD_R: 28 };
+
+const STATUS = {
+  done:   { label: 'Completed',   dotBg: 'var(--color-accent-400)', dotBorder: 'var(--color-accent-400)', cardBg: 'color-mix(in srgb, var(--color-accent) 7%, var(--color-surface))', cardBorder: 'var(--color-accent-800)', txt: 'var(--color-accent-300)', title: 'var(--color-text)' },
+  active: { label: 'In Progress', dotBg: 'var(--color-accent)',     dotBorder: 'var(--color-accent)',     cardBg: 'var(--color-surface)', cardBorder: 'var(--color-divider)', txt: 'var(--color-accent-300)', title: 'var(--color-text)' },
+  ready:  { label: 'Ready',       dotBg: 'transparent',             dotBorder: 'var(--color-accent)',     cardBg: 'var(--color-surface)', cardBorder: 'var(--color-accent)',  txt: 'var(--color-accent-300)', title: 'var(--color-text)', glow: true },
+  locked: { label: 'Locked',      dotBg: 'transparent',             dotBorder: 'var(--color-neutral-700)', cardBg: 'var(--color-surface)', cardBorder: 'var(--color-divider)', txt: 'var(--color-neutral-500)', title: 'var(--color-neutral-500)' },
+  risk:   { label: 'At Risk',     dotBg: 'var(--color-alarm)',      dotBorder: 'var(--color-alarm)',      cardBg: 'var(--color-surface)', cardBorder: 'var(--color-divider)', txt: 'var(--color-alarm-text)', title: 'var(--color-text)' },
+};
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const icon = (name, size) => `<svg class="icon" style="font-size:${size || 'inherit'}"><use href="#i-${esc(name)}"/></svg>`;
+const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+
+/* Orthogonal path with rounded corners through [x,y] points. Dependencies run
+ * across lanes, so a straight line would cut through unrelated cards; the elbow
+ * leaves the source, crosses in the gutter, then enters the target level. */
+function roundedPath(pts, r) {
+  if (pts.length < 3) return `M ${pts[0][0]} ${pts[0][1]} L ${pts[pts.length - 1][0]} ${pts[pts.length - 1][1]}`;
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+    const l1 = Math.hypot(x1 - x0, y1 - y0), l2 = Math.hypot(x2 - x1, y2 - y1);
+    if (l1 < 1 || l2 < 1) { d += ` L ${x1} ${y1}`; continue; }
+    const rr = Math.min(r, l1 / 2, l2 / 2);
+    const a = [x1 - (x1 - x0) / l1 * rr, y1 - (y1 - y0) / l1 * rr];
+    const b = [x1 + (x2 - x1) / l2 * rr, y1 + (y2 - y1) / l2 * rr];
+    d += ` L ${a[0].toFixed(1)} ${a[1].toFixed(1)} Q ${x1} ${y1} ${b[0].toFixed(1)} ${b[1].toFixed(1)}`;
+  }
+  const e = pts[pts.length - 1];
+  return d + ` L ${e[0]} ${e[1]}`;
+}
+
+class Report {
+  constructor(data) {
+    this.d = data;
+    this.lanes = data.lanes || [];
+    this.tiers = data.tiers || [];
+    this.capital = Object.assign({ label: 'Capital committed', prefix: '$', suffix: 'M', decimals: 1 }, data.capital || {});
+    this.crewCfg = Object.assign({ label: 'Crew deployed', cap: null, icon: 'user' }, data.crew || {});
+    this.nodes = this.computeStatus(data.nodes || []);
+    this.validate();
+    // With no crew anywhere (a solo repo, an unassigned board), the slot is dead
+    // weight on every card — drop it rather than print a column of em-dashes.
+    this.showCrew = this.nodes.some((n) => (n.crew || 0) > 0);
+  }
+
+  /* A card's position is (lane, tier), so two nodes sharing a cell land on the
+   * exact same pixels — the top one silently hides the other. Cheap to do by
+   * accident when mapping a backlog, and invisible in the output. Fail loudly. */
+  validate() {
+    const seen = {}, errs = [];
+    this.nodes.forEach((n) => {
+      if (!this.lanes.some((l) => l.id === n.lane)) errs.push(`node ${n.id}: unknown lane "${n.lane}"`);
+      if (n.tier == null || n.tier < 0 || n.tier >= this.tiers.length) errs.push(`node ${n.id}: tier ${n.tier} out of range`);
+      (n.prereqs || []).forEach((p) => { if (!this.nodes.some((x) => x.id === p)) errs.push(`node ${n.id}: prereq "${p}" does not exist`); });
+      const cell = `${n.lane}/${n.tier}`;
+      if (seen[cell]) errs.push(`nodes "${seen[cell]}" and "${n.id}" both sit at ${cell} — one card per lane per tier`);
+      seen[cell] = n.id;
+    });
+    if (errs.length) throw new Error('Invalid report data:\n  - ' + errs.join('\n  - '));
+  }
+
+  /* `ready` vs `locked` is derived, never authored: a node whose prerequisites
+   * are all done is ready, otherwise it is locked. Authors who hand-set these
+   * two drift the moment something ships; only done/active/risk are declared. */
+  computeStatus(nodes) {
+    const byId = {};
+    const eff = {};
+    nodes.forEach((n) => { byId[n.id] = n; });
+    [...nodes].sort((a, b) => a.tier - b.tier).forEach((n) => {
+      let status = n.status;
+      if (status === 'ready' || status === 'locked') {
+        const prereqs = n.prereqs || [];
+        status = prereqs.every((p) => eff[p] && eff[p].status === 'done') ? 'ready' : 'locked';
+      }
+      eff[n.id] = Object.assign({}, n, { status, progress: n.progress || 0 });
+    });
+    return nodes.map((n) => eff[n.id]);
+  }
+
+  node(id) { return this.nodes.find((n) => n.id === id); }
+  lane(id) { return this.lanes.find((l) => l.id === id) || { name: id, color: 'var(--color-accent)', icon: 'stack' }; }
+  laneIndex(id) { return this.lanes.findIndex((l) => l.id === id); }
+  laneColor(id) { return this.lane(id).color; }
+  fmtCap(v) { const c = this.capital; return c.prefix + Number(v || 0).toFixed(c.decimals) + c.suffix; }
+  cardX(t) { return M.PAD_X + t * M.COL_W; }
+  cardY(l) { return M.HEAD_H + l * M.ROW_H + (M.ROW_H - M.CARD_H) / 2; }
+  midY(l) { return M.HEAD_H + l * M.ROW_H + M.ROW_H / 2; }
+  contentW() { return M.PAD_X + this.tiers.length * M.COL_W + M.PAD_R; }
+  contentH() { return M.HEAD_H + this.lanes.length * M.ROW_H; }
+  /* Spend/staffing counts what is actually being worked, not what is merely
+   * planned — locked and ready work has nobody on it by definition. */
+  isCommitted(s) { return s === 'done' || s === 'active' || s === 'risk'; }
+
+  render(root) {
+    root.style.width = (M.RAIL_W + this.contentW() + 60) + 'px';
+    root.append(this.header());
+    if ((this.d.priorities || []).length) root.append(this.priorities());
+    root.append(this.tree());
+    const foot = this.footer();
+    if (foot) root.append(foot);
+  }
+
+  header() {
+    const total = this.nodes.reduce((a, n) => a + (n.budget || 0), 0);
+    const committed = this.nodes.filter((n) => this.isCommitted(n.status)).reduce((a, n) => a + (n.budget || 0), 0);
+    const crew = this.nodes.reduce((a, n) => a + (this.isCommitted(n.status) ? (n.crew || 0) : 0), 0);
+    const done = this.nodes.filter((n) => n.status === 'done').length;
+    const cap = this.crewCfg.cap;
+
+    const stats = [
+      { label: 'Milestones', value: `${done} / ${this.nodes.length}`, pct: this.nodes.length ? done / this.nodes.length : 0 },
+      { label: this.capital.label, value: `${this.fmtCap(committed)} / ${this.fmtCap(total)}`, pct: total ? committed / total : 0 },
+    ];
+    if (cap) stats.push({ label: this.crewCfg.label, value: `${crew} / ${cap}`, pct: crew / cap });
+
+    return el(`
+      <div class="hdr">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="hdr-mark">${icon(this.d.mark || 'tree', '20px')}</div>
+          <div>
+            <div style="font-size:20px; line-height:1.05;">${esc(this.d.org)}</div>
+            <div class="kick" style="font-size:10px; color:var(--color-neutral-500); margin-top:3px;">${esc(this.d.subtitle || '')}</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:26px; margin-left:auto; flex-wrap:wrap;">
+          ${stats.map((s) => `
+            <div class="stat">
+              <div class="kick" style="font-size:9px; color:var(--color-neutral-500);">${esc(s.label)}</div>
+              <div class="mono" style="font-size:13px; margin-top:4px;">${esc(s.value)}</div>
+              <div class="stat-bar"><div style="width:${Math.round(s.pct * 100)}%"></div></div>
+            </div>`).join('')}
+        </div>
+      </div>`);
+  }
+
+  priorities() {
+    const wrap = el('<div style="margin-bottom:18px;"></div>');
+    wrap.append(el(`
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+        <span class="kick" style="display:inline-flex; align-items:center; gap:6px; font-size:10px; color:var(--color-accent-200); padding:3px 9px; border:1px solid var(--color-accent); border-radius:var(--radius-sm);">${icon('target', '11px')} Priorities This Week</span>
+        <span class="kick" style="font-size:10px; color:var(--color-neutral-500);">${esc(this.d.week || '')}</span>
+      </div>`));
+
+    const cards = this.d.priorities.map((p) => {
+      const c = p.color || this.laneColor(p.lane) || 'var(--color-accent)';
+      const pct = p.progress == null ? null : `${p.progress}%`;
+      return `
+        <div class="pri" style="border:1px solid color-mix(in srgb, ${c} 28%, transparent); border-left:2px solid ${c}; background:linear-gradient(120deg, color-mix(in srgb, ${c} 9%, var(--color-surface)), var(--color-surface) 62%); box-shadow:0 0 18px color-mix(in srgb, ${c} 12%, transparent);">
+          <div class="kick" style="display:inline-flex; align-items:center; gap:6px; font-size:9px; color:${c};">
+            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${c};"></span>${esc(this.lane(p.lane).name)}
+          </div>
+          <div style="font-size:14.5px; line-height:1.28; margin:8px 0 12px;">${esc(p.title)}</div>
+          ${p.dri ? `
+            <div style="display:flex; align-items:center; gap:9px; margin-top:auto;">
+              <span class="avatar" style="background:color-mix(in srgb, ${c} 18%, transparent); color:${c};">${esc(p.initials || '')}</span>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:12px;">${esc(p.dri)}</div>
+                <div class="mono" style="color:var(--color-neutral-500); font-size:8.5px; letter-spacing:0.06em;">DRI &middot; ${esc(p.role || '')}</div>
+              </div>
+            </div>` : '<div style="margin-top:auto;"></div>'}
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px; padding-top:11px; border-top:1px solid var(--color-divider);">
+            <span class="kick" style="color:var(--color-neutral-400); font-size:9px; display:inline-flex; align-items:center; gap:4px;">${icon('flag', '10px')}${esc(p.target || '—')}</span>
+            <span class="kick" style="color:var(--color-neutral-300); font-size:9px;">${esc(pct || '')}</span>
+          </div>
+          <div style="height:3px; background:var(--color-neutral-900); border-radius:99px; overflow:hidden; margin-top:9px;">
+            <div style="height:100%; width:${pct || '0%'}; background:${c}; border-radius:99px;"></div>
+          </div>
+        </div>`;
+    });
+
+    const grid = el(`<div class="pri-grid">${cards.join('')}</div>`);
+    // Three is the design's column count; fewer priorities should stretch to fill
+    // rather than leave a ragged hole where a card would be.
+    if (this.d.priorities.length !== 3) grid.style.gridTemplateColumns = `repeat(${this.d.priorities.length}, minmax(0,1fr))`;
+    wrap.append(grid);
+    return wrap;
+  }
+
+  tree() {
+    const wrap = el('<div class="tree"></div>');
+    const total = this.nodes.reduce((a, n) => a + (n.budget || 0), 0);
+
+    // ── lane rail ──
+    const rail = el(`<div class="rail" style="width:${M.RAIL_W}px;"></div>`);
+    rail.append(el(`<div style="height:${M.HEAD_H}px;"></div>`));
+    this.lanes.forEach((lane) => {
+      const laneTotal = this.nodes.filter((n) => n.lane === lane.id).reduce((a, n) => a + (n.budget || 0), 0);
+      const share = total ? Math.round(laneTotal / total * 100) : 0;
+      rail.append(el(`
+        <div class="rail-row" style="height:${M.ROW_H}px; box-shadow:inset 3px 0 0 color-mix(in srgb, ${lane.color} 55%, transparent);">
+          <div style="display:flex; align-items:center; gap:9px;">
+            <span class="rail-icon" style="background:color-mix(in srgb, ${lane.color} 15%, transparent); color:${lane.color};">${icon(lane.icon, '15px')}</span>
+            <div style="font-size:13px; font-weight:500; line-height:1.15;">${esc(lane.name)}</div>
+          </div>
+          <div style="margin-top:11px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="height:3px; width:70%; background:var(--color-neutral-900); border-radius:99px; overflow:hidden;">
+              <div style="height:100%; width:${share}%; background:${lane.color}; border-radius:99px;"></div>
+            </div>
+            <span class="kick" style="font-size:10px; color:var(--color-neutral-400);">${share}%</span>
+          </div>
+        </div>`));
+    });
+    wrap.append(rail);
+
+    // ── canvas ──
+    const cw = this.contentW(), ch = this.contentH();
+    const canvas = el(`<div class="canvas"><div style="position:relative; width:${cw}px; height:${ch}px;"></div></div>`);
+    const inner = canvas.firstElementChild;
+
+    this.lanes.forEach((_l, i) => {
+      inner.append(el(`<div style="position:absolute; left:0; top:${M.HEAD_H + i * M.ROW_H}px; width:${cw}px; height:${M.ROW_H}px; border-top:1px solid var(--color-divider); background:${i % 2 ? 'var(--band)' : 'transparent'};"></div>`));
+    });
+
+    this.tiers.forEach((t, i) => {
+      inner.append(el(`
+        <div style="position:absolute; top:0; left:${this.cardX(i)}px; width:${M.CARD_W}px; height:${M.HEAD_H}px; display:flex; align-items:center; gap:8px;">
+          <span class="kick" style="font-size:10px; color:var(--color-accent-300);">${esc(t.label)}</span>
+          <span style="font-size:11px; color:var(--color-neutral-500);">${esc(t.sub || '')}</span>
+        </div>`));
+    });
+
+    // ── connectors (behind cards) ──
+    const paths = [];
+    this.nodes.forEach((n) => {
+      (n.prereqs || []).forEach((pid) => {
+        const p = this.node(pid);
+        if (!p) return;
+        const sx = this.cardX(p.tier) + M.CARD_W, sy = this.midY(this.laneIndex(p.lane));
+        const tx = this.cardX(n.tier), ty = this.midY(this.laneIndex(n.lane));
+        const ex = tx - 20;
+        const lit = p.status === 'done';
+        const d = Math.abs(sy - ty) < 1 ? `M ${sx} ${sy} L ${tx} ${ty}` : roundedPath([[sx, sy], [ex, sy], [ex, ty], [tx, ty]], 12);
+        paths.push({ d, tx, ty, stroke: lit ? 'var(--color-accent-700)' : 'var(--wire)', dot: lit ? 'var(--color-accent-600)' : 'var(--wire-dot)' });
+      });
+    });
+    inner.append(el(`
+      <svg style="position:absolute; top:0; left:0; z-index:1; pointer-events:none; overflow:visible;" width="${cw}" height="${ch}">
+        ${paths.map((p) => `<path d="${p.d}" fill="none" stroke="${p.stroke}" stroke-width="1.5" stroke-linejoin="round"/>`).join('')}
+        ${paths.map((p) => `<circle cx="${p.tx}" cy="${p.ty}" r="2.5" fill="${p.dot}"/>`).join('')}
+      </svg>`));
+
+    // ── cards ──
+    this.nodes.forEach((n) => {
+      const st = STATUS[n.status] || STATUS.locked;
+      const lc = this.laneColor(n.lane);
+      const showProgress = n.status === 'active' || n.status === 'risk';
+      inner.append(el(`
+        <div class="node" style="left:${this.cardX(n.tier)}px; top:${this.cardY(this.laneIndex(n.lane))}px; width:${M.CARD_W}px; height:${M.CARD_H}px; background:${st.cardBg}; border:1px solid ${st.cardBorder}; border-left:2px solid ${lc}; box-shadow:${st.glow ? '0 0 14px rgba(var(--accent-rgb),0.14)' : 'none'};">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span class="dot" style="background:${st.dotBg}; border:1.5px solid ${st.dotBorder};"></span>
+            <span class="kick" style="font-size:9px; color:${st.txt};">${esc(st.label)}</span>
+            ${n.ref ? `<span class="mono" style="margin-left:auto; font-size:9px; color:var(--color-neutral-600);">${esc(n.ref)}</span>` : ''}
+          </div>
+          <div class="node-title" style="color:${st.title};">${esc(n.name)}</div>
+          <div class="node-meta">
+            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="color:var(--color-accent-400);">&#9670;</span>${esc(this.fmtCap(n.budget))}</span>
+            ${this.showCrew ? `<span style="display:inline-flex; align-items:center; gap:4px;">${icon(this.crewCfg.icon, '11px')}${n.crew > 0 ? esc(n.crew) : '&mdash;'}</span>` : ''}
+          </div>
+          ${showProgress ? `<div class="progress"><div style="height:100%; width:${n.progress || 0}%; background:${n.status === 'risk' ? 'var(--color-alarm)' : 'var(--color-accent)'};"></div></div>` : ''}
+        </div>`));
+    });
+
+    wrap.append(canvas);
+    return wrap;
+  }
+
+  footer() {
+    const t = this.d.throughput, s = this.d.shipped;
+    if (!t && !s) return null;
+    // The two panels are 5:7 by design; alone, either takes the full width.
+    const cols = t && s ? 'minmax(0,5fr) minmax(0,7fr)' : '1fr';
+    const wrap = el(`<div style="display:grid; grid-template-columns:${cols}; gap:18px; margin-top:18px;"></div>`);
+    if (t) wrap.append(this.throughput(t));
+    if (s) wrap.append(this.shipped(s));
+    return wrap;
+  }
+
+  throughput(t) {
+    const raw = t.values || [];
+    const max = Math.max(1, ...raw);
+    const n = raw.length;
+    const sum = (a) => a.reduce((x, y) => x + y, 0);
+    const half = Math.floor(n / 2);
+    const recent = sum(raw.slice(half)), prior = sum(raw.slice(0, half));
+    const avg = n ? Math.round(sum(raw) / n) : 0;
+    // A delta against a zero baseline is a divide-by-zero, and "+∞% WoW" is not
+    // a finding — suppress it rather than print a number that means nothing.
+    const hasDelta = prior > 0;
+    const dp = hasDelta ? Math.round((recent - prior) / prior * 100) : 0;
+    const up = dp >= 0;
+
+    return el(`
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="kick" style="color:var(--color-accent-300);">${esc(t.title || 'Throughput')}</div>
+            <div style="font-size:12.5px; color:var(--color-neutral-400); margin-top:5px;">${esc(t.subtitle || '')}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:26px; letter-spacing:-0.01em; line-height:1;">${recent}<span style="font-size:12px; color:var(--color-neutral-500); margin-left:5px;">${esc(t.totalLabel || 'this wk')}</span></div>
+            ${hasDelta ? `<div class="mono" style="font-size:11px; margin-top:5px; color:${up ? 'var(--color-accent-300)' : 'var(--color-alarm-text)'};">${up ? '▲' : '▼'} ${Math.abs(dp)}% WoW</div>` : ''}
+          </div>
+        </div>
+        <div class="bars">
+          <div style="position:absolute; left:0; right:0; bottom:${Math.round(avg / max * 100)}%; border-top:1px dashed rgba(var(--accent-rgb),0.28); pointer-events:none;"></div>
+          ${raw.map((v, i) => `<div><div class="bar ${i === n - 1 ? 'today' : ''}" style="height:${Math.round(v / max * 100)}%;"></div></div>`).join('')}
+        </div>
+        <div class="kick" style="display:flex; justify-content:space-between; align-items:center; color:var(--color-neutral-600); margin-top:9px; font-size:9px;">
+          <span>${esc(t.startLabel || '')}</span>
+          <span style="color:var(--color-neutral-500);">avg ${avg}${esc(t.avgSuffix || '/day')}</span>
+          <span style="color:var(--color-accent-300);">${esc(t.endLabel || 'today')}</span>
+        </div>
+      </div>`);
+  }
+
+  shipped(s) {
+    const TYPE = {
+      Feature: 'var(--color-accent-300)',
+      Fix: 'var(--color-alarm-text)',
+      Improvement: 'var(--color-neutral-300)',
+      Docs: 'var(--color-neutral-400)',
+      Infra: 'var(--color-accent-200)',
+    };
+    const grid = 'grid-template-columns:92px 1fr 168px 58px 52px;';
+    const rows = (s.items || []).map((f) => {
+      const c = TYPE[f.type] || 'var(--color-neutral-300)';
+      const href = f.href || (s.repoUrl && f.ref ? `${s.repoUrl.replace(/\/$/, '')}/${String(f.ref).replace('#', '')}` : null);
+      const link = (inner, cls, style) => href
+        ? `<a href="${esc(href)}" class="${cls}" style="${style} text-decoration:none;">${inner}</a>`
+        : `<span class="${cls}" style="${style}">${inner}</span>`;
+      return `
+        <div class="feed-row" style="${grid}">
+          <span class="mono" style="display:inline-flex; align-items:center; gap:6px; font-size:9px; letter-spacing:0.1em; color:${c};">
+            <span style="display:inline-block; width:6px; height:6px; flex:none; border-radius:50%; background:${c};"></span>${esc(String(f.type || '').toUpperCase())}
+          </span>
+          ${link(esc(f.title), 'truncate', 'font-size:13.5px; line-height:1.3; color:var(--color-text);')}
+          <div class="mono truncate" style="color:var(--color-neutral-500); font-size:9px; letter-spacing:0.06em;">${esc(f.meta || '')}</div>
+          <span class="kick" style="color:var(--color-neutral-500); font-size:9px; text-align:right; white-space:nowrap;">${esc(f.time || '')}</span>
+          ${f.ref ? link(`${icon('github', '11px')}${esc(f.ref)}`, 'mono', 'display:inline-flex; align-items:center; justify-content:flex-end; gap:3px; font-size:9px; color:var(--color-accent-300); white-space:nowrap;') : '<span></span>'}
+        </div>`;
+    });
+
+    return el(`
+      <div class="panel" style="display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div class="kick" style="color:var(--color-accent-300);">${esc(s.title || 'Recently Shipped')}</div>
+          <div class="kick" style="color:var(--color-neutral-600);">${esc(s.window || '')}</div>
+        </div>
+        <div style="margin-top:14px;">
+          <div class="kick feed-head" style="display:grid; ${grid} gap:12px;">
+            <span>Type</span><span>Change</span><span>${esc(s.metaLabel || 'Lane / Owner')}</span><span style="text-align:right;">When</span><span style="text-align:right;">Ref</span>
+          </div>
+          ${rows.join('')}
+        </div>
+      </div>`);
+  }
+}
+
+const data = window.REPORT_DATA;
+const root = document.getElementById('report');
+/* Report failures into the DOM. A throw inside this script would otherwise leave
+ * the page blank forever, and the renderer would only ever learn "timed out" —
+ * which says nothing about the two nodes sharing a cell that actually caused it. */
+function fail(msg) {
+  document.body.dataset.error = msg;
+  root.innerHTML = `<pre class="mono" style="color:var(--color-alarm-text); padding:40px; white-space:pre-wrap;">${esc(msg)}</pre>`;
+}
+try {
+  if (!data) throw new Error('No REPORT_DATA — render with scripts/render.py');
+  if (data.theme) document.documentElement.setAttribute('data-theme', data.theme);
+  new Report(data).render(root);
+  // render.py waits on this before screenshotting.
+  document.body.dataset.ready = '1';
+} catch (e) {
+  fail(e && e.message ? e.message : String(e));
+}
+</script>
+</body>
+</html>

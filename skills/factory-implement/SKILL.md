@@ -67,7 +67,7 @@ The point of saying all this: take the stress off. Thoroughness is the job.
    - `factory/codebases.md` — the repo(s) this service spans and where they live.
    - `factory/deployment.md` — worktree base dir, how to run/demo the stack, and the demo mode. **Also check for `factory/dev-manager.md`** — if the repo has one, it is the canonical provisioning guide (worktrees, env copy, boot/pause/teardown) and overrides the manual instructions in `deployment.md`.
    - The **Handoff & status** section of `factory/intake.md` — where to post updates and what "ready for review" means.
-4. If any of those are **missing or incomplete**, run **Onboarding** ([onboarding.md](onboarding.md)) to fill them with the user, then continue. Do not guess infrastructure or status conventions.
+4. If any of those are **missing or incomplete**, run **`/factory-onboard`** — the single, partial-aware onboarding skill; it detects exactly which `factory/` files are missing (here: `codebases.md`, `deployment.md`, the handoff section of `intake.md`) and fills only those, using this skill's [onboarding.md](onboarding.md) as its reference. If `factory-onboard` isn't available, fall back to [onboarding.md](onboarding.md) directly. Then continue. Do not guess infrastructure or status conventions.
 
 ---
 

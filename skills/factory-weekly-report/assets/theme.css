@@ -1,0 +1,325 @@
+/* Weekly report — design tokens and primitives.
+ *
+ * Derived from the Nocturne design system (references/tech-tree-dashboard/_ds/).
+ * Every colour, radius and space below is a token: a theme is a block of token
+ * overrides and nothing else. Set `data-theme` on <html> to switch.
+ *
+ * Rules that keep the two themes honest:
+ *   - never hard-code a hex outside the :root blocks; use var(--…)
+ *   - lane colours are the one exception — they come from the report data,
+ *     because a lane's identity belongs to the org, not the theme
+ *   - accent is a line and a glow, never a flood
+ */
+
+/* ── cyber: near-black ground, one neon accent, magenta as the sole alarm ── */
+:root,
+:root[data-theme="cyber"] {
+  --color-bg: #07090c;
+  --color-surface: #0e1218;
+  --color-canvas: #0a0d12;
+  --color-text: #d7e2e8;
+  --color-divider: rgba(46, 230, 230, 0.14);
+
+  --color-accent: #2ee6e6;
+  --color-accent-100: #d9fcfc;
+  --color-accent-200: #a6f5f6;
+  --color-accent-300: #6ceff0;
+  --color-accent-400: #33e6e8;
+  --color-accent-500: #18cdd0;
+  --color-accent-600: #10a6a9;
+  --color-accent-700: #0d7e81;
+  --color-accent-800: #0f383c;
+  --color-accent-900: #0a2124;
+
+  --color-neutral-100: #eef3f6;
+  --color-neutral-200: #d3dbe1;
+  --color-neutral-300: #aeb9c2;
+  --color-neutral-400: #8a95a0;
+  --color-neutral-500: #68727d;
+  --color-neutral-600: #4c5560;
+  --color-neutral-700: #39424c;
+  --color-neutral-800: #242a32;
+  --color-neutral-900: #141920;
+
+  --color-alarm: #ff3d7f;
+  --color-alarm-text: #ff9dc0;
+  --color-alarm-tint: rgba(255, 61, 127, 0.16);
+
+  --accent-rgb: 46, 230, 230;
+  --wire: rgba(120, 140, 150, 0.28);
+  --wire-dot: rgba(120, 140, 150, 0.4);
+  --band: rgba(255, 255, 255, 0.012);
+
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 5px;
+}
+
+/* ── nocturne: the original blue-grey ground with the blurple accent ── */
+:root[data-theme="nocturne"] {
+  --color-bg: #161826;
+  --color-surface: #232532;
+  --color-canvas: #13141f;
+  --color-text: #e9e9ed;
+  --color-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
+
+  --color-accent: #9184d9;
+  --color-accent-100: #f5f4ff;
+  --color-accent-200: #e7e5fe;
+  --color-accent-300: #d2cefd;
+  --color-accent-400: #b5abfc;
+  --color-accent-500: #968ae0;
+  --color-accent-600: #796cbf;
+  --color-accent-700: #5d5294;
+  --color-accent-800: #423a6a;
+  --color-accent-900: #2b2741;
+
+  --color-neutral-100: #f3f5fe;
+  --color-neutral-200: #e4e7f5;
+  --color-neutral-300: #cfd3e5;
+  --color-neutral-400: #b2b6ca;
+  --color-neutral-500: #9397ab;
+  --color-neutral-600: #75798c;
+  --color-neutral-700: #595d6c;
+  --color-neutral-800: #3f424d;
+  --color-neutral-900: #292b31;
+
+  --color-alarm: #d6a24e;
+  --color-alarm-text: #e6cd97;
+  --color-alarm-tint: rgba(214, 162, 78, 0.14);
+
+  --accent-rgb: 145, 132, 217;
+  --wire: rgba(147, 151, 171, 0.26);
+  --wire-dot: rgba(147, 151, 171, 0.4);
+  --band: rgba(255, 255, 255, 0.012);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The uppercase micro-label doing most of the typographic work in this design.
+ * Monospace at 9–10px with wide tracking reads as instrumentation, not prose. */
+.kick {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+h1, h2, h3, h4 { letter-spacing: -0.01em; font-weight: 500; margin: 0; }
+
+.icon {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+  flex: none;
+  display: inline-block;
+  vertical-align: -0.125em;
+}
+
+#report {
+  padding: 26px 30px 30px;
+  margin: 0 auto;
+}
+
+/* ── panels ── */
+.panel {
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  padding: 18px 20px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ── header ── */
+.hdr {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.hdr-mark {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  color: var(--color-accent);
+  font-size: 20px;
+  box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.3);
+}
+
+.stat { min-width: 148px; }
+.stat-bar {
+  height: 4px;
+  border-radius: 99px;
+  background: var(--color-neutral-900);
+  overflow: hidden;
+  margin-top: 6px;
+}
+.stat-bar > div {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 99px;
+}
+
+/* ── priority cards ── */
+.pri-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pri {
+  position: relative;
+  border-radius: var(--radius-md);
+  padding: 14px 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+}
+
+/* ── tree ── */
+.tree {
+  position: relative;
+  display: flex;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-canvas);
+}
+
+.rail { flex: none; border-right: 1px solid var(--color-divider); background: var(--color-bg); }
+
+.rail-row {
+  padding: 0 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-top: 1px solid var(--color-divider);
+}
+
+.rail-icon {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  font-size: 15px;
+}
+
+.canvas { flex: 1; position: relative; overflow: hidden; }
+
+.node {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  padding: 11px 11px 11px 13px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.node-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.15;
+  margin-top: 7px;
+  /* Titles are org text of unknown length — clamp rather than let a long one
+   * push the meta row out of a fixed-height card. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.node-meta {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  font-size: 11px;
+  color: var(--color-neutral-500);
+}
+
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: var(--color-neutral-900);
+}
+
+/* ── throughput ── */
+.bars {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 100px;
+  margin-top: 22px;
+}
+.bars > div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+.bar { min-height: 3px; border-radius: 2px 2px 0 0; background: rgba(var(--accent-rgb), 0.3); }
+.bar.today { background: var(--color-accent); box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.6); }
+
+/* ── shipped feed ── */
+.feed-row {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-divider);
+}
+.feed-head { padding-bottom: 8px; color: var(--color-neutral-600); font-size: 9px; }
+
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}

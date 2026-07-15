@@ -1,0 +1,10 @@
+{
+  "id": "ai-pm",
+  "title": "AI Product Manager",
+  "description": "Reads the org's communication channels on a schedule and reconciles the work tracker — creating, closing, assigning, and commenting on issues based on what people are actually saying.",
+  "skill": "factory-ai-pm",
+  "setup_skill": "factory-communication-setup",
+  "requires_files": ["factory/communication.md"],
+  "prompt_file": "prompt.md",
+  "default_interval_minutes": 5
+}

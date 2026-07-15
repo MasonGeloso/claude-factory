@@ -29,7 +29,7 @@ Then branch:
 - **`factory/` is missing** → do **not** attempt intake. Tell the user plainly:
   > You don't have a `factory/` directory in this repo, so I don't know how this project tracks work. I'm not going to guess. Let's set it up together first.
 
-  Then run **Onboarding** — see [onboarding.md](onboarding.md). Do this even if the user pasted a transcript; hold the transcript and offer to run intake on it once onboarding completes.
+  Then run **`/factory-onboard`** — the single, partial-aware onboarding skill that sets up the whole `factory/` directory (it uses this skill's [onboarding.md](onboarding.md) as its reference for the `intake.md`/`ownership.md` question sets). If `factory-onboard` isn't available, fall back to running Onboarding from [onboarding.md](onboarding.md) directly. Do this even if the user pasted a transcript; hold the transcript and offer to run intake on it once onboarding completes.
 
 - **`factory/` exists** → read `factory/intake.md` and `factory/ownership.md` in full, then run **Intake** below.
 

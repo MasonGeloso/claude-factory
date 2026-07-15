@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AGENT COMMAND — Hone Systems Ops</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬡</text></svg>" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="gl"></canvas>
+    <div id="labels"></div>
+
+    <!-- ══ Top command bar ══ -->
+    <header id="topbar" class="hud">
+      <div class="brand">
+        <span class="brand-mark">⬡</span>
+        <span class="brand-name">AGENT COMMAND</span>
+        <span class="brand-sub">HONE SYSTEMS / OPS THEATER</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="stat-label">AGENTS</span><span class="stat-value" id="stat-agents">0</span></div>
+        <div class="stat"><span class="stat-label">WORKING</span><span class="stat-value ok" id="stat-working">0</span></div>
+        <div class="stat"><span class="stat-label">BLOCKED</span><span class="stat-value bad" id="stat-blocked">0</span></div>
+        <div class="stat"><span class="stat-label">TASKS DONE</span><span class="stat-value" id="stat-tasks">0</span></div>
+        <div class="stat"><span class="stat-label">TOKENS/MIN</span><span class="stat-value amber" id="stat-tokens">0</span></div>
+        <div class="stat"><span class="stat-label">SHIFT</span><span class="stat-value" id="stat-clock">00:00</span></div>
+      </div>
+      <div class="speed">
+        <button class="spd" id="btn-pause" title="Pause (P)">❚❚</button>
+        <button class="spd active" data-speed="1">1×</button>
+        <button class="spd" data-speed="2">2×</button>
+        <button class="spd" data-speed="4">4×</button>
+        <button class="spd" id="btn-help" title="Help (H)">?</button>
+      </div>
+    </header>
+
+    <!-- ══ Comms feed (radio chatter) ══ -->
+    <div id="comms" class="hud">
+      <div class="comms-title">◤ COMMS</div>
+      <div id="comms-lines"></div>
+    </div>
+
+    <!-- ══ Chat / hail panel ══ -->
+    <aside id="chat" class="hud hidden">
+      <div class="chat-head">
+        <div class="chat-portrait" id="chat-portrait">⬡</div>
+        <div class="chat-id">
+          <div class="chat-name" id="chat-name">—</div>
+          <div class="chat-meta" id="chat-meta">—</div>
+        </div>
+        <button class="chat-close" id="chat-close" title="Close (Esc)">✕</button>
+      </div>
+      <div class="chat-task" id="chat-task">—</div>
+      <div class="chat-log" id="chat-log"></div>
+      <div class="chat-quick" id="chat-quick">
+        <button data-cmd="status report">STATUS</button>
+        <button data-cmd="hold position">HOLD</button>
+        <button data-cmd="resume work">RESUME</button>
+        <button data-cmd="approve">APPROVE</button>
+      </div>
+      <form class="chat-input" id="chat-form">
+        <span class="chat-prompt">▸</span>
+        <input id="chat-text" type="text" autocomplete="off" spellcheck="false"
+               placeholder="transmit orders… (try: status / hold / work on auth / move to gateway)" />
+      </form>
+    </aside>
+
+    <!-- ══ Selection tray ══ -->
+    <div id="selection" class="hud hidden">
+      <div id="selection-cards"></div>
+    </div>
+
+    <!-- ══ Inspector (building/district) ══ -->
+    <div id="inspector" class="hud hidden">
+      <div class="insp-head">
+        <span class="insp-kicker" id="insp-kicker">MODULE</span>
+        <button class="chat-close" id="insp-close">✕</button>
+      </div>
+      <div class="insp-name" id="insp-name">—</div>
+      <div class="insp-desc" id="insp-desc">—</div>
+      <div class="insp-rows" id="insp-rows"></div>
+      <div class="insp-crew-title">ON SITE</div>
+      <div class="insp-crew" id="insp-crew"></div>
+    </div>
+
+    <!-- ══ Minimap ══ -->
+    <div id="minimap-wrap" class="hud">
+      <canvas id="minimap" width="220" height="220"></canvas>
+      <div class="minimap-title">TACMAP</div>
+    </div>
+
+    <!-- ══ Hint bar ══ -->
+    <div id="hint" class="hud">LMB select · drag box-select · RMB click order · RMB drag pan · wheel zoom · Q/E rotate · WASD pan · H help</div>
+
+    <!-- ══ Help overlay ══ -->
+    <div id="help" class="hidden">
+      <div class="help-card hud">
+        <div class="help-title">◤ FIELD MANUAL</div>
+        <div class="help-cols">
+          <div>
+            <h4>CAMERA</h4>
+            <p><b>WASD / arrows / edge</b> pan</p>
+            <p><b>wheel</b> zoom · <b>Q / E</b> rotate</p>
+            <p><b>RMB / MMB drag</b> pan · <b>double-click unit</b> focus</p>
+            <h4>COMMAND</h4>
+            <p><b>LMB</b> select · <b>drag</b> box select · <b>shift</b> add</p>
+            <p><b>RMB ground</b> move order</p>
+            <p><b>RMB building</b> assign work</p>
+          </div>
+          <div>
+            <h4>COMMS</h4>
+            <p>Select one operative to open the hail channel.</p>
+            <p>Orders they understand: <b>status</b>, <b>hold</b>, <b>resume</b>, <b>approve</b>, <b>work on &lt;module&gt;</b>, <b>move to &lt;service&gt;</b>.</p>
+            <h4>DOCTRINE</h4>
+            <p>Districts are repos. Buildings are modules.</p>
+            <p>Sessions command agents; agents field subagents and workers.</p>
+            <p>Blocked units flash red — hail them and approve.</p>
+            <p><b>M</b> mute · <b>P</b> pause · <b>1/2/4×</b> sim speed</p>
+          </div>
+        </div>
+        <div class="help-foot">press H or click to close</div>
+      </div>
+    </div>
+
+    <div id="boxsel" class="hidden"></div>
+    <div id="toasts"></div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "id": "daily-digest",
+  "title": "Daily Activity Digest",
+  "description": "Once a day, surveys recent activity across the org's systems (commits, issues, conversation) and posts a concise TLDR of what's being worked on — factoring in current priorities and flagging them if they've gone stale.",
+  "skill": "factory-daily-digest",
+  "setup_skill": "factory-onboard",
+  "requires_files": ["factory/communication.md", "factory/intake.md"],
+  "prompt_file": "prompt.md",
+  "default_interval_minutes": 1440
+}

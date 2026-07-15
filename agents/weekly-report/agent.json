@@ -1,0 +1,10 @@
+{
+  "id": "weekly-report",
+  "title": "Weekly Tech-Tree Report",
+  "description": "Curates the tracker into a tech-tree investment board — what shipped, what's in flight, what's blocked behind what — renders it to an image, and posts it where the org wants it. Covers a rolling 7-day window; posts each morning by default (--interval 10080 for a true weekly post).",
+  "skill": "factory-weekly-report",
+  "setup_skill": "factory-onboard",
+  "requires_files": ["factory/communication.md", "factory/intake.md"],
+  "prompt_file": "prompt.md",
+  "default_interval_minutes": 1440
+}

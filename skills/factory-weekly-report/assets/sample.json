@@ -1,0 +1,82 @@
+{
+  "theme": "cyber",
+  "org": "Northwind",
+  "subtitle": "FY26–27 · milestones, dependencies and where the budget is going",
+  "week": "Week of Jul 14",
+  "mark": "tree",
+  "capital": { "label": "Capital committed", "prefix": "$", "suffix": "M", "decimals": 1 },
+  "crew": { "label": "Crew deployed", "cap": 80 },
+
+  "lanes": [
+    { "id": "platform", "name": "Platform & Infra", "icon": "stack", "color": "#2ee6e6" },
+    { "id": "ai", "name": "AI & Intelligence", "icon": "brain", "color": "#b07bff" },
+    { "id": "product", "name": "Product & Growth", "icon": "rocket", "color": "#ffb347" },
+    { "id": "data", "name": "Data & Analytics", "icon": "chart", "color": "#46e39b" },
+    { "id": "security", "name": "Trust & Security", "icon": "shield", "color": "#4d9dff" }
+  ],
+
+  "tiers": [
+    { "label": "Tier I", "sub": "Shipped" },
+    { "label": "Tier II", "sub": "Q3 2026" },
+    { "label": "Tier III", "sub": "Q4 2026" },
+    { "label": "Tier IV", "sub": "H1 2027" },
+    { "label": "Tier V", "sub": "Horizon" }
+  ],
+
+  "nodes": [
+    { "id": "p1", "lane": "platform", "tier": 0, "name": "Kubernetes Migration", "status": "done", "budget": 1.2, "crew": 6, "prereqs": [] },
+    { "id": "p2", "lane": "platform", "tier": 1, "name": "Multi-region Failover", "status": "active", "budget": 0.9, "crew": 5, "progress": 60, "prereqs": ["p1"] },
+    { "id": "p3", "lane": "platform", "tier": 2, "name": "Edge Compute Fabric", "status": "ready", "budget": 1.5, "crew": 0, "prereqs": ["p2"] },
+    { "id": "p4", "lane": "platform", "tier": 4, "name": "Self-healing Infra", "status": "locked", "budget": 2.0, "crew": 0, "prereqs": ["p3"] },
+
+    { "id": "a1", "lane": "ai", "tier": 0, "name": "Feature Store", "status": "done", "budget": 0.7, "crew": 4, "prereqs": [] },
+    { "id": "a2", "lane": "ai", "tier": 1, "name": "Realtime Inference", "status": "active", "budget": 1.1, "crew": 7, "progress": 40, "prereqs": ["a1"] },
+    { "id": "a3", "lane": "ai", "tier": 2, "name": "Agentic Workflows", "status": "ready", "budget": 1.8, "crew": 0, "prereqs": ["a2", "p2"] },
+    { "id": "a4", "lane": "ai", "tier": 3, "name": "Foundation Model Finetune", "status": "locked", "budget": 3.0, "crew": 0, "prereqs": ["a3"] },
+    { "id": "a5", "lane": "ai", "tier": 4, "name": "Autonomous Ops Copilot", "status": "locked", "budget": 2.5, "crew": 0, "prereqs": ["a4", "p4"] },
+
+    { "id": "g1", "lane": "product", "tier": 0, "name": "Onboarding Revamp", "status": "done", "budget": 0.4, "crew": 3, "prereqs": [] },
+    { "id": "g2", "lane": "product", "tier": 1, "name": "Usage-based Billing", "status": "active", "budget": 0.6, "crew": 4, "progress": 75, "prereqs": ["g1"] },
+    { "id": "g3", "lane": "product", "tier": 2, "name": "Self-serve Enterprise", "status": "risk", "budget": 0.9, "crew": 5, "progress": 45, "prereqs": ["g2"] },
+    { "id": "g4", "lane": "product", "tier": 3, "name": "Partner Marketplace", "status": "locked", "budget": 1.2, "crew": 0, "prereqs": ["g3", "a3"] },
+
+    { "id": "d1", "lane": "data", "tier": 0, "name": "Warehouse Consolidation", "status": "done", "budget": 0.8, "crew": 4, "prereqs": [] },
+    { "id": "d2", "lane": "data", "tier": 1, "name": "Streaming Pipeline", "status": "active", "budget": 0.7, "crew": 5, "progress": 50, "prereqs": ["d1", "p1"] },
+    { "id": "d3", "lane": "data", "tier": 2, "name": "Semantic Metrics Layer", "status": "ready", "budget": 0.5, "crew": 0, "prereqs": ["d2"] },
+    { "id": "d4", "lane": "data", "tier": 3, "name": "Predictive Analytics", "status": "locked", "budget": 1.4, "crew": 0, "prereqs": ["d3", "a2"] },
+
+    { "id": "s1", "lane": "security", "tier": 0, "name": "SOC 2 Type II", "status": "done", "budget": 0.3, "crew": 2, "prereqs": [] },
+    { "id": "s2", "lane": "security", "tier": 1, "name": "Zero-trust Network", "status": "active", "budget": 0.65, "crew": 4, "progress": 30, "prereqs": ["s1"] },
+    { "id": "s3", "lane": "security", "tier": 3, "name": "SSO + SCIM Everywhere", "status": "ready", "budget": 0.5, "crew": 0, "prereqs": ["s2"] },
+    { "id": "s4", "lane": "security", "tier": 4, "name": "Confidential Compute", "status": "locked", "budget": 1.8, "crew": 0, "prereqs": ["s3", "p3"] }
+  ],
+
+  "priorities": [
+    { "title": "Ship Multi-region Failover to production", "lane": "platform", "dri": "A. Vasquez", "role": "SRE Lead", "initials": "AV", "target": "Fri Jul 18", "progress": 60 },
+    { "title": "Land self-serve enterprise SSO + procurement", "lane": "product", "dri": "J. Lin", "role": "PM", "initials": "JL", "target": "Thu Jul 17", "progress": 45 },
+    { "title": "Promote realtime inference to all prod paths", "lane": "ai", "dri": "M. Okafor", "role": "ML Eng", "initials": "MO", "target": "Wed Jul 16", "progress": 40 }
+  ],
+
+  "throughput": {
+    "title": "MR Throughput",
+    "subtitle": "Merged per day · last 14 days",
+    "values": [8, 11, 7, 13, 9, 4, 3, 12, 15, 10, 14, 9, 17, 13],
+    "startLabel": "2 wks ago",
+    "endLabel": "today",
+    "totalLabel": "this wk"
+  },
+
+  "shipped": {
+    "title": "Recently Shipped",
+    "window": "Last 3 days",
+    "repoUrl": "https://github.com/northwind/platform/issues",
+    "items": [
+      { "type": "Feature", "title": "Realtime inference gateway promoted to GA", "meta": "AI & Intelligence · M. Okafor", "time": "2h ago", "ref": "#2841" },
+      { "type": "Fix", "title": "Resolved failover false-positive alert storm", "meta": "Platform & Infra · SRE pod", "time": "5h ago", "ref": "#2837" },
+      { "type": "Improvement", "title": "Onboarding activation up 4 pts after copy pass", "meta": "Product & Growth · J. Lin", "time": "1d ago", "ref": "#2822" },
+      { "type": "Feature", "title": "Usage-based billing caps now live in prod", "meta": "Product & Growth · R. Adeyemi", "time": "1d ago", "ref": "#2815" },
+      { "type": "Fix", "title": "Deduplicated lakehouse streaming backfill", "meta": "Data & Analytics · P. Novak", "time": "2d ago", "ref": "#2808" },
+      { "type": "Improvement", "title": "K8s cold-start latency reduced 38%", "meta": "Platform & Infra · SRE pod", "time": "3d ago", "ref": "#2791" }
+    ]
+  }
+}

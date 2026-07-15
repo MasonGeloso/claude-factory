@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="_ds/nocturne-5b8c8bb2-aa5d-40fe-a648-55e3cd7a4290/styles.css">
+<script>
+  (function(){
+    var urls = [
+      'https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css',
+      'https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css',
+      'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap'
+    ];
+    setTimeout(function(){ urls.forEach(function(u){ var l=document.createElement('link'); l.rel='stylesheet'; l.href=u; document.head.appendChild(l); }); }, 0);
+  })();
+</script>
+<style>
+  /* ── Minimal-cyberpunk retheme: override the design tokens once so every
+     var(--color-*) reference across the tree recolours together. Near-black
+     ground, one neon-cyan accent, magenta as the single alert colour, crisp
+     small radii, monospace micro-labels. ── */
+  :root{
+    --color-bg:#07090c;
+    --color-surface:#0e1218;
+    --color-text:#d7e2e8;
+    --color-divider:rgba(46,230,230,0.14);
+    --color-accent:#2ee6e6;
+    --color-accent-100:#d9fcfc; --color-accent-200:#a6f5f6; --color-accent-300:#6ceff0;
+    --color-accent-400:#33e6e8; --color-accent-500:#18cdd0; --color-accent-600:#10a6a9;
+    --color-accent-700:#0d7e81; --color-accent-800:#0f383c; --color-accent-900:#0a2124;
+    --color-neutral-100:#eef3f6; --color-neutral-200:#d3dbe1; --color-neutral-300:#aeb9c2;
+    --color-neutral-400:#8a95a0; --color-neutral-500:#68727d; --color-neutral-600:#4c5560;
+    --color-neutral-700:#39424c; --color-neutral-800:#242a32; --color-neutral-900:#141920;
+    --radius-sm:2px; --radius-md:3px; --radius-lg:5px;
+  }
+  html, body { background: var(--color-bg); }
+  a { color: var(--color-accent-300); }
+  a:hover { color: var(--color-accent-200); }
+  h1, h2, h3, h4 { letter-spacing:-0.01em; }
+  .kick { font-family:"JetBrains Mono", ui-monospace, monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; }
+  .tt-scroll::-webkit-scrollbar { height:10px; }
+  .tt-scroll::-webkit-scrollbar-thumb { background:var(--color-neutral-800); border-radius:8px; border:3px solid var(--color-bg); }
+  .tt-scroll::-webkit-scrollbar-track { background:transparent; }
+</style>
+</helmet>
+
+<div style="min-height:100vh; background:var(--color-bg); color:var(--color-text); padding:26px 30px 34px; max-width:1560px; margin:0 auto;">
+
+  <!-- ══ PRIORITIES THIS WEEK ══ -->
+  <div style="margin-bottom:18px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+      <span class="kick" style="display:inline-flex; align-items:center; gap:6px; color:var(--color-accent-200); padding:3px 9px; border:1px solid var(--color-accent); border-radius:var(--radius-sm);"><i class="ph-fill ph-target"></i> Priorities This Week</span>
+      <span class="kick" style="color:var(--color-neutral-500);">{{ priWeek }}</span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px;">
+      <sc-for list="{{ priorities }}" as="p" hint-placeholder-count="3">
+        <div style="{{ p.cardStyle }}">
+          <div class="kick" style="{{ p.laneStyle }}"><span style="{{ p.laneDot }}"></span>{{ p.lane }}</div>
+          <div style="font-size:14.5px; line-height:1.28; margin:8px 0 12px;">{{ p.title }}</div>
+          <div style="display:flex; align-items:center; gap:9px; margin-top:auto;">
+            <span style="{{ p.avatarStyle }}">{{ p.initials }}</span>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:12px;">{{ p.dri }}</div>
+              <div class="kick" style="color:var(--color-neutral-500); font-size:8.5px; text-transform:none; letter-spacing:0.06em;">DRI &middot; {{ p.role }}</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px; padding-top:11px; border-top:1px solid var(--color-divider);">
+            <span class="kick" style="color:var(--color-neutral-400); font-size:9px;"><i class="ph ph-flag" style="margin-right:4px;"></i>{{ p.target }}</span>
+            <span class="kick" style="color:var(--color-neutral-300); font-size:9px;">{{ p.progress }}</span>
+          </div>
+          <div style="height:3px; background:var(--color-neutral-900); border-radius:99px; overflow:hidden; margin-top:9px;"><div style="height:100%; width:{{ p.progress }}; background:{{ p.progColor }}; border-radius:99px;"></div></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ══ TREE ══ -->
+  <div style="position:relative; display:flex; border:1px solid var(--color-divider); border-radius:var(--radius-lg); overflow:hidden; background:#0a0d12;">
+
+    <!-- lane rail -->
+    <div style="flex:none; width:176px; border-right:1px solid var(--color-divider); background:var(--color-bg);">
+      <div style="{{ railSpacer }}"></div>
+      <sc-for list="{{ rail }}" as="r" hint-placeholder-count="5">
+        <div data-node onClick="{{ r.onClick }}" style="{{ r.style }}" style-hover="background:color-mix(in srgb, var(--color-text) 4%, transparent)">
+          <div style="display:flex; align-items:center; gap:9px;">
+            <span style="{{ r.iconStyle }}"><i class="ph {{ r.icon }}" style="font-size:15px;"></i></span>
+            <div style="font-size:13px; font-weight:500; line-height:1.15;">{{ r.name }}</div>
+          </div>
+          <div style="margin-top:11px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="height:3px; width:70%; background:var(--color-neutral-900); border-radius:99px; overflow:hidden;"><div style="{{ r.barStyle }}"></div></div>
+            <span class="kick" style="color:var(--color-neutral-400);">{{ r.shareLabel }}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- scroll canvas -->
+    <div class="tt-scroll" style="flex:1; overflow-x:auto; overflow-y:hidden;">
+      <div style="{{ canvasStyle }}">
+
+        <sc-for list="{{ laneBands }}" as="b" hint-placeholder-count="5">
+          <div style="{{ b.style }}"></div>
+        </sc-for>
+
+        <sc-for list="{{ tierHeaders }}" as="h" hint-placeholder-count="5">
+          <div style="{{ h.style }}">
+            <span class="kick" style="color:var(--color-accent-300);">{{ h.label }}</span>
+            <span style="font-size:11px; color:var(--color-neutral-500);">{{ h.sub }}</span>
+          </div>
+        </sc-for>
+
+        <svg style="{{ svgStyle }}" width="{{ contentW }}" height="{{ contentH }}">
+          <sc-for list="{{ connectors }}" as="c" hint-placeholder-count="0">
+            <path d="{{ c.d }}" fill="none" stroke="{{ c.stroke }}" stroke-width="{{ c.width }}" stroke-linejoin="round" style="{{ c.pathStyle }}"></path>
+          </sc-for>
+          <sc-for list="{{ connectors }}" as="c" hint-placeholder-count="0">
+            <circle cx="{{ c.tx }}" cy="{{ c.ty }}" r="2.5" fill="{{ c.dotColor }}"></circle>
+          </sc-for>
+        </svg>
+
+        <sc-for list="{{ cards }}" as="n" hint-placeholder-count="0">
+          <div data-node onClick="{{ n.onClick }}" style="{{ n.cardStyle }}" style-hover="{{ n.hoverStyle }}">
+            <div style="display:flex; align-items:center; gap:7px;">
+              <span style="{{ n.dotStyle }}"></span>
+              <span class="kick" style="color:{{ n.txtColor }}; font-size:9px;">{{ n.statusLabel }}</span>
+            </div>
+            <div style="{{ n.titleStyle }}">{{ n.name }}</div>
+            <div style="display:flex; gap:10px; margin-top:auto; font-size:11px; color:var(--color-neutral-500);">
+              <span style="display:inline-flex; align-items:center; gap:4px;"><span style="color:var(--color-accent-400);">&#9670;</span>{{ n.budgetLabel }}</span>
+              <span style="display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-user"></i>{{ n.crewLabel }}</span>
+            </div>
+            <sc-if value="{{ n.showProgress }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute; left:0; bottom:0; height:3px; width:100%; background:var(--color-neutral-900); border-radius:0 0 var(--radius-md) var(--radius-md); overflow:hidden;"><div style="height:100%; width:{{ n.progressPct }}; background:{{ n.progressColor }};"></div></div>
+            </sc-if>
+          </div>
+        </sc-for>
+
+      </div>
+    </div>
+
+    <!-- ══ DETAIL PANEL ══ -->
+    <sc-if value="{{ detail }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; top:14px; right:14px; width:326px; max-height:calc(100% - 28px); overflow:auto; z-index:30; background:var(--color-surface); border:1px solid var(--color-accent-800); border-radius:var(--radius-lg); box-shadow:0 0 0 1px rgba(46,230,230,0.15), 0 24px 60px rgba(0,0,0,0.7), 0 0 40px rgba(46,230,230,0.08);">
+        <div style="padding:18px 18px 0;">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
+            <div class="kick" style="color:var(--color-accent-300);">{{ detail.kicker }}</div>
+            <button data-node onClick="{{ closeDetail }}" style="cursor:pointer; width:24px; height:24px; margin:-4px -4px 0 0; display:grid; place-items:center; background:none; border:none; color:var(--color-neutral-400);" style-hover="color:var(--color-text)"><i class="ph ph-x" style="font-size:14px;"></i></button>
+          </div>
+          <div style="display:flex; align-items:center; gap:11px; margin-top:11px;">
+            <span style="width:38px; height:38px; flex:none; display:grid; place-items:center; border-radius:8px; background:color-mix(in srgb, var(--color-accent) 12%, transparent); color:var(--color-accent);"><i class="ph {{ detail.icon }}" style="font-size:18px;"></i></span>
+            <h3 style="margin:0; font-size:19px; line-height:1.14;">{{ detail.name }}</h3>
+          </div>
+          <span style="{{ detail.tagStyle }} margin-top:12px;">{{ detail.statusLabel }}</span>
+          <p style="font-size:12.5px; line-height:1.55; color:var(--color-neutral-300); margin:13px 0 0;">{{ detail.desc }}</p>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; padding:16px 18px 0;">
+          <div><div class="kick" style="color:var(--color-neutral-500);">Capital</div><div style="font-size:16px; margin-top:3px;">{{ detail.budgetLabel }}</div></div>
+          <div><div class="kick" style="color:var(--color-neutral-500);">Personnel</div><div style="font-size:16px; margin-top:3px;">{{ detail.crewLabel }}</div></div>
+        </div>
+
+        <sc-if value="{{ detail.showProgress }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:16px 18px 0;">
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--color-neutral-500);"><span>Progress</span><span style="color:var(--color-accent-200);">{{ detail.progressPct }}</span></div>
+            <div style="height:5px; background:var(--color-neutral-900); border-radius:99px; margin-top:6px; overflow:hidden;"><div style="height:100%; width:{{ detail.progressPct }}; background:{{ detail.progressColor }}; border-radius:99px;"></div></div>
+          </div>
+        </sc-if>
+
+        <div style="padding:18px;">
+          <sc-if value="{{ detail.hasPrereqs }}" hint-placeholder-val="{{ false }}">
+            <div class="kick" style="color:var(--color-neutral-500); margin-bottom:9px;">Requires</div>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:16px;">
+              <sc-for list="{{ detail.prereqs }}" as="p" hint-placeholder-count="1">
+                <div data-node onClick="{{ p.onClick }}" style="display:flex; align-items:center; gap:9px; font-size:13px; cursor:pointer; padding:7px 10px; border:1px solid var(--color-divider); border-radius:var(--radius-sm);" style-hover="background:color-mix(in srgb, var(--color-text) 5%, transparent)">
+                  <span style="{{ p.dotStyle }}"></span><span style="flex:1;">{{ p.name }}</span><span class="kick" style="font-size:9px; color:var(--color-neutral-500);">{{ p.statusLabel }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ detail.hasUnlocks }}" hint-placeholder-val="{{ false }}">
+            <div class="kick" style="color:var(--color-neutral-500); margin-bottom:9px;">Unlocks</div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <sc-for list="{{ detail.unlocks }}" as="u" hint-placeholder-count="1">
+                <div data-node onClick="{{ u.onClick }}" style="display:flex; align-items:center; gap:9px; font-size:13px; cursor:pointer; padding:7px 10px; border:1px solid var(--color-divider); border-radius:var(--radius-sm);" style-hover="background:color-mix(in srgb, var(--color-text) 5%, transparent)">
+                  <span style="{{ u.dotStyle }}"></span><span style="flex:1;">{{ u.name }}</span><span class="kick" style="font-size:9px; color:var(--color-neutral-500);">{{ u.statusLabel }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <button data-node onClick="{{ detail.action.onClick }}" style="{{ detail.action.style }}" style-hover="{{ detail.action.hover }}">
+            <i class="{{ detail.action.icon }}"></i>{{ detail.action.label }}
+          </button>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+
+  <!-- ══ DAILY CHECK-IN ══ -->
+  <div style="display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:18px; margin-top:18px;">
+
+    <!-- MR throughput -->
+    <div style="border:1px solid var(--color-divider); border-radius:var(--radius-lg); background:var(--color-surface); padding:18px 20px;">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+        <div>
+          <div class="kick" style="color:var(--color-accent-300);">MR Throughput</div>
+          <div style="font-size:12.5px; color:var(--color-neutral-400); margin-top:5px;">Merged per day &middot; last 14 days</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:26px; letter-spacing:-0.01em; line-height:1;">{{ mr.total }}<span style="font-size:12px; color:var(--color-neutral-500); margin-left:5px;">this wk</span></div>
+          <div style="{{ mr.deltaStyle }}">{{ mr.delta }}</div>
+        </div>
+      </div>
+      <div style="position:relative; display:flex; align-items:flex-end; gap:4px; height:100px; margin-top:22px;">
+        <div style="{{ mr.avgLineStyle }}"></div>
+        <sc-for list="{{ mr.bars }}" as="b" hint-placeholder-count="14">
+          <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; height:100%;">
+            <div style="{{ b.style }}"></div>
+          </div>
+        </sc-for>
+      </div>
+      <div class="kick" style="display:flex; justify-content:space-between; align-items:center; color:var(--color-neutral-600); margin-top:9px; font-size:9px;">
+        <span>2 wks ago</span><span style="color:var(--color-neutral-500);">avg {{ mr.avg }}/day</span><span style="color:var(--color-accent-300);">today</span>
+      </div>
+    </div>
+
+    <!-- Recently shipped -->
+    <div style="border:1px solid var(--color-divider); border-radius:var(--radius-lg); background:var(--color-surface); padding:18px 20px; display:flex; flex-direction:column;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div class="kick" style="color:var(--color-accent-300);">Recently Shipped</div>
+        <div class="kick" style="color:var(--color-neutral-600);">Last 3 days</div>
+      </div>
+      <div style="margin-top:14px;">
+        <div class="kick" style="display:grid; grid-template-columns:92px 1fr 118px 58px 44px; gap:12px; color:var(--color-neutral-600); font-size:9px; padding-bottom:8px;">
+          <span>Type</span><span>Change</span><span>Lane / Owner</span><span style="text-align:right;">When</span><span style="text-align:right;">Issue</span>
+        </div>
+        <sc-for list="{{ feed }}" as="f" hint-placeholder-count="6">
+          <div style="display:grid; grid-template-columns:92px 1fr 118px 58px 44px; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--color-divider);">
+            <span style="{{ f.tagStyle }}"><span style="{{ f.tagDot }}"></span>{{ f.type }}</span>
+            <a href="{{ f.issueHref }}" target="_blank" rel="noopener" style="font-size:13.5px; line-height:1.3; color:var(--color-text); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" style-hover="color:var(--color-accent-200)">{{ f.title }}</a>
+            <div class="kick" style="color:var(--color-neutral-500); font-size:9px; letter-spacing:0.06em; text-transform:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.meta }}</div>
+            <span class="kick" style="color:var(--color-neutral-500); font-size:9px; text-align:right; white-space:nowrap;">{{ f.time }}</span>
+            <a href="{{ f.issueHref }}" target="_blank" rel="noopener" class="kick" style="display:inline-flex; align-items:center; justify-content:flex-end; gap:3px; font-size:9px; color:var(--color-accent-300); text-decoration:none; white-space:nowrap;" style-hover="color:var(--color-accent-100)"><i class="ph ph-github-logo" style="font-size:11px;"></i>{{ f.issueLabel }}</a>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { selected: null, statusFilter: 'all', laneFilter: null, ov: {} };
+
+  M = { RAIL_W:176, COL_W:240, ROW_H:124, HEAD_H:46, CARD_W:200, CARD_H:82, PAD_X:28, PAD_R:28 };
+
+  LANES = [
+    { id:'platform', name:'Platform & Infra',  icon:'ph-stack',          color:'#2ee6e6' },
+    { id:'ai',       name:'AI & Intelligence', icon:'ph-brain',          color:'#b07bff' },
+    { id:'product',  name:'Product & Growth',  icon:'ph-rocket-launch',  color:'#ffb347' },
+    { id:'data',     name:'Data & Analytics',  icon:'ph-chart-line-up',  color:'#46e39b' },
+    { id:'security', name:'Trust & Security',  icon:'ph-shield-check',   color:'#4d9dff' },
+  ];
+  laneColor(id){ const l=this.LANES.find(x=>x.id===id); return l?l.color:'var(--color-accent)'; }
+  laneColorByName(name){ const l=this.LANES.find(x=>x.name===name); return l?l.color:'var(--color-accent)'; }
+  TIERS = [
+    { label:'Tier I',   sub:'Shipped' },
+    { label:'Tier II',  sub:'Q3 2026' },
+    { label:'Tier III', sub:'Q4 2026' },
+    { label:'Tier IV',  sub:'H1 2027' },
+    { label:'Tier V',   sub:'Horizon' },
+  ];
+  DATA = [
+    { id:'p1', lane:'platform', tier:0, name:'Kubernetes Migration', status:'done', budget:1.2, crew:6, prereqs:[], desc:'All services containerized on managed K8s with GitOps deploys. The base every other branch builds on.' },
+    { id:'p2', lane:'platform', tier:1, name:'Multi-region Failover', status:'active', budget:0.9, crew:5, progress:60, prereqs:['p1'], desc:'Active-active across two regions with automated failover under 30s. In build with the SRE pod.' },
+    { id:'p3', lane:'platform', tier:2, name:'Edge Compute Fabric', status:'ready', budget:1.5, crew:0, prereqs:['p2'], desc:'Push compute to edge PoPs for latency-sensitive workloads. Scoped and staffed \u2014 ready to activate.' },
+    { id:'p4', lane:'platform', tier:4, name:'Self-healing Infra', status:'locked', budget:2.0, crew:0, prereqs:['p3'], desc:'Closed-loop remediation that detects, diagnoses and repairs without a human. Depends on edge fabric.' },
+    { id:'a1', lane:'ai', tier:0, name:'Feature Store', status:'done', budget:0.7, crew:4, prereqs:[], desc:'Central, versioned feature store shared across training and serving. Adopted by three teams.' },
+    { id:'a2', lane:'ai', tier:1, name:'Realtime Inference', status:'active', budget:1.1, crew:7, progress:40, prereqs:['a1'], desc:'Sub-100ms online inference with autoscaling GPU pools. Gateway is live; production rollout underway.' },
+    { id:'a3', lane:'ai', tier:2, name:'Agentic Workflows', status:'ready', budget:1.8, crew:0, prereqs:['a2','p2'], desc:'Tool-using agents orchestrating multi-step internal workflows. Needs realtime inference and multi-region resilience.' },
+    { id:'a4', lane:'ai', tier:3, name:'Foundation Model Finetune', status:'locked', budget:3.0, crew:0, prereqs:['a3'], desc:'Domain-adapted foundation model on proprietary data. Largest single investment on the board.' },
+    { id:'a5', lane:'ai', tier:4, name:'Autonomous Ops Copilot', status:'locked', budget:2.5, crew:0, prereqs:['a4','p4'], desc:'A copilot that plans and executes ops changes end-to-end. The branch\u2019s capstone.' },
+    { id:'g1', lane:'product', tier:0, name:'Onboarding Revamp', status:'done', budget:0.4, crew:3, prereqs:[], desc:'Rebuilt first-run flow lifted activation 18%. Done and measured.' },
+    { id:'g2', lane:'product', tier:1, name:'Usage-based Billing', status:'active', budget:0.6, crew:4, progress:75, prereqs:['g1'], desc:'Metered billing with real-time usage caps. In final QA before GA.' },
+    { id:'g3', lane:'product', tier:2, name:'Self-serve Enterprise', status:'risk', budget:0.9, crew:5, progress:45, prereqs:['g2'], desc:'Enterprise plans purchasable without sales touch. At risk \u2014 blocked on procurement/SSO and slipping this quarter.' },
+    { id:'g4', lane:'product', tier:3, name:'Partner Marketplace', status:'locked', budget:1.2, crew:0, prereqs:['g3','a3'], desc:'Third-party apps and revenue share. Needs self-serve enterprise plus agentic workflows.' },
+    { id:'d1', lane:'data', tier:0, name:'Warehouse Consolidation', status:'done', budget:0.8, crew:4, prereqs:[], desc:'Collapsed three warehouses into one governed lakehouse. Complete.' },
+    { id:'d2', lane:'data', tier:1, name:'Streaming Pipeline', status:'active', budget:0.7, crew:5, progress:50, prereqs:['d1','p1'], desc:'Exactly-once streaming ingestion feeding the lakehouse. Backfill in progress on the new K8s base.' },
+    { id:'d3', lane:'data', tier:2, name:'Semantic Metrics Layer', status:'ready', budget:0.5, crew:0, prereqs:['d2'], desc:'One governed definition per metric, consumed by BI and product. Ready to activate.' },
+    { id:'d4', lane:'data', tier:3, name:'Predictive Analytics', status:'locked', budget:1.4, crew:0, prereqs:['d3','a2'], desc:'Forecasting and churn models surfaced in-product. Depends on the metrics layer and realtime inference.' },
+    { id:'s1', lane:'security', tier:0, name:'SOC 2 Type II', status:'done', budget:0.3, crew:2, prereqs:[], desc:'Clean SOC 2 Type II report. Unblocks enterprise deals.' },
+    { id:'s2', lane:'security', tier:1, name:'Zero-trust Network', status:'active', budget:0.65, crew:4, progress:30, prereqs:['s1'], desc:'Identity-aware access replacing the VPN. Rollout to first cohorts underway.' },
+    { id:'s3', lane:'security', tier:3, name:'SSO + SCIM Everywhere', status:'ready', budget:0.5, crew:0, prereqs:['s2'], desc:'Enterprise SSO and directory sync across all surfaces. A hard dependency for self-serve enterprise.' },
+    { id:'s4', lane:'security', tier:4, name:'Confidential Compute', status:'locked', budget:1.8, crew:0, prereqs:['s3','p3'], desc:'Encrypted-in-use workloads on trusted enclaves. Needs SSO coverage and edge fabric.' },
+  ];
+
+  STY = {
+    done:   { label:'Completed',   tag:{bg:'var(--color-accent-800)', col:'var(--color-accent-100)'}, dotBg:'var(--color-accent-400)', dotBorder:'var(--color-accent-400)', cardBg:'color-mix(in srgb, var(--color-accent) 7%, var(--color-surface))', cardBorder:'var(--color-accent-800)', txt:'var(--color-accent-300)', title:'var(--color-text)', icon:'ph-check' },
+    active: { label:'In Progress', tag:{bg:'color-mix(in srgb, var(--color-accent) 18%, transparent)', col:'var(--color-accent-200)'}, dotBg:'var(--color-accent)', dotBorder:'var(--color-accent)', cardBg:'var(--color-surface)', cardBorder:'var(--color-divider)', txt:'var(--color-accent-300)', title:'var(--color-text)', icon:'ph-circle-notch' },
+    ready:  { label:'Ready',       tag:{bg:'color-mix(in srgb, var(--color-accent) 12%, transparent)', col:'var(--color-accent-200)'}, dotBg:'transparent', dotBorder:'var(--color-accent)', cardBg:'var(--color-surface)', cardBorder:'var(--color-accent)', txt:'var(--color-accent-300)', title:'var(--color-text)', icon:'ph-lock-simple-open' },
+    locked: { label:'Locked',      tag:{bg:'var(--color-neutral-900)', col:'var(--color-neutral-400)'}, dotBg:'transparent', dotBorder:'var(--color-neutral-700)', cardBg:'var(--color-surface)', cardBorder:'var(--color-divider)', txt:'var(--color-neutral-500)', title:'var(--color-neutral-500)', icon:'ph-lock-simple' },
+    risk:   { label:'At Risk',     tag:{bg:'rgba(255,61,127,0.16)', col:'#ff9dc0'}, dotBg:'#ff3d7f', dotBorder:'#ff3d7f', cardBg:'var(--color-surface)', cardBorder:'var(--color-divider)', txt:'#ff7ba6', title:'var(--color-text)', icon:'ph-warning' },
+  };
+
+  MRDATA = [8,11,7,13,9,4,3,12,15,10,14,9,17,13];
+  REPO = 'https://github.com/northwind/platform/issues/';
+  FEED = [
+    { type:'Feature',     title:'Realtime inference gateway promoted to GA', meta:'AI & Intelligence \u00b7 M. Okafor', time:'2h ago', issue:2841 },
+    { type:'Fix',         title:'Resolved failover false-positive alert storm', meta:'Platform & Infra \u00b7 SRE pod', time:'5h ago', issue:2837 },
+    { type:'Improvement', title:'Onboarding activation up 4 pts after copy pass', meta:'Product & Growth \u00b7 J. Lin', time:'1d ago', issue:2822 },
+    { type:'Feature',     title:'Usage-based billing caps now live in prod', meta:'Product & Growth \u00b7 R. Adeyemi', time:'1d ago', issue:2815 },
+    { type:'Fix',         title:'Deduplicated lakehouse streaming backfill', meta:'Data & Analytics \u00b7 P. Novak', time:'2d ago', issue:2808 },
+    { type:'Improvement', title:'K8s cold-start latency reduced 38%', meta:'Platform & Infra \u00b7 SRE pod', time:'3d ago', issue:2791 },
+  ];
+
+  buildMR(){
+    const raw=this.MRDATA, n=raw.length, max=Math.max(...raw), sum=a=>a.reduce((x,y)=>x+y,0);
+    const last7=sum(raw.slice(-7)), prior7=sum(raw.slice(0,7));
+    const dp=Math.round((last7-prior7)/prior7*100), up=dp>=0, avg=Math.round(sum(raw)/n);
+    return {
+      total:last7, avg,
+      delta:(up?'\u25B2 ':'\u25BC ')+Math.abs(dp)+'% WoW',
+      deltaStyle:`font-family:"JetBrains Mono",monospace; font-size:11px; margin-top:5px; color:${up?'var(--color-accent-300)':'#ff7ba6'};`,
+      avgLineStyle:`position:absolute; left:0; right:0; bottom:${Math.round(avg/max*100)}%; border-top:1px dashed rgba(46,230,230,0.28); pointer-events:none;`,
+      bars:raw.map((v,i)=>{ const today=i===n-1; return { style:`height:${Math.round(v/max*100)}%; min-height:3px; border-radius:2px 2px 0 0; background:${today?'var(--color-accent)':'rgba(46,230,230,0.30)'};${today?' box-shadow:0 0 10px rgba(46,230,230,0.6);':''}` }; }),
+    };
+  }
+  buildFeed(){
+    const T={ Feature:{col:'var(--color-accent-300)'}, Fix:{col:'#ff7ba6'}, Improvement:{col:'var(--color-neutral-300)'} };
+    return this.FEED.map(f=>{ const t=T[f.type]; return { type:f.type.toUpperCase(), title:f.title, meta:f.meta, time:f.time,
+      issueLabel:'#'+f.issue, issueHref:this.REPO+f.issue,
+      tagStyle:`display:inline-flex; align-items:center; gap:6px; font-family:"JetBrains Mono",monospace; font-size:9px; letter-spacing:0.1em; color:${t.col};`,
+      tagDot:`display:inline-block; width:6px; height:6px; flex:none; border-radius:50%; background:${t.col};` }; });
+  }
+  fmtM(v){ return '$' + v.toFixed(1) + 'M'; }
+  laneMeta(id){ return this.LANES.find(l=>l.id===id); }
+  laneIndex(id){ return this.LANES.findIndex(l=>l.id===id); }
+  cardX(t){ return this.M.PAD_X + t*this.M.COL_W; }
+  cardY(l){ return this.M.HEAD_H + l*this.M.ROW_H + (this.M.ROW_H-this.M.CARD_H)/2; }
+  midY(l){ return this.M.HEAD_H + l*this.M.ROW_H + this.M.ROW_H/2; }
+  contentW(){ return this.M.PAD_X + this.TIERS.length*this.M.COL_W + this.M.PAD_R; }
+  contentH(){ return this.M.HEAD_H + this.LANES.length*this.M.ROW_H; }
+  isActiveSpend(s){ return s==='done' || s==='active' || s==='risk'; }
+
+  computeEff(){
+    if (this._effCache && this._effOv === this.state.ov) return this._effCache;
+    const E = {};
+    const ordered = [...this.DATA].sort((a,b)=>a.tier-b.tier);
+    for (const b of ordered){
+      const o = this.state.ov[b.id];
+      let status = o && o.status;
+      const progress = (o && o.progress != null) ? o.progress : (b.progress || 0);
+      if (!status){
+        if (b.status==='ready' || b.status==='locked')
+          status = b.prereqs.every(p => E[p] && E[p].status==='done') ? 'ready' : 'locked';
+        else status = b.status;
+      }
+      E[b.id] = { ...b, status, progress };
+    }
+    this._effCache = E; this._effOv = this.state.ov;
+    return E;
+  }
+  setOv(id, patch){ this.setState(s => ({ ov: { ...s.ov, [id]: { ...(s.ov[id]||{}), ...patch } } })); }
+
+  // Orthogonal path with rounded corners through an array of [x,y] points.
+  rp(pts, r){
+    if (pts.length < 3) return `M ${pts[0][0]} ${pts[0][1]} L ${pts[pts.length-1][0]} ${pts[pts.length-1][1]}`;
+    let d = `M ${pts[0][0]} ${pts[0][1]}`;
+    for (let i=1; i<pts.length-1; i++){
+      const [x0,y0]=pts[i-1], [x1,y1]=pts[i], [x2,y2]=pts[i+1];
+      const l1=Math.hypot(x1-x0,y1-y0), l2=Math.hypot(x2-x1,y2-y1);
+      if (l1<1 || l2<1){ d += ` L ${x1} ${y1}`; continue; }
+      const rr=Math.min(r, l1/2, l2/2);
+      const a=[x1-(x1-x0)/l1*rr, y1-(y1-y0)/l1*rr];
+      const b=[x1+(x2-x1)/l2*rr, y1+(y2-y1)/l2*rr];
+      d += ` L ${a[0].toFixed(1)} ${a[1].toFixed(1)} Q ${x1} ${y1} ${b[0].toFixed(1)} ${b[1].toFixed(1)}`;
+    }
+    const e=pts[pts.length-1];
+    return d + ` L ${e[0]} ${e[1]}`;
+  }
+
+  isDimmed(status, lane){
+    const { statusFilter, laneFilter } = this.state;
+    if (statusFilter!=='all' && status!==statusFilter) return true;
+    if (laneFilter && lane!==laneFilter) return true;
+    return false;
+  }
+  tagStyle(st){ return `display:inline-flex; align-items:center; font-size:10px; letter-spacing:0.04em; padding:3px 9px; border-radius:5px; background:${st.tag.bg}; color:${st.tag.col};`; }
+  dotSpan(st){ return `display:inline-block; width:9px; height:9px; flex:none; border-radius:50%; background:${st.dotBg}; border:1.5px solid ${st.dotBorder};`; }
+  select(id){ this.setState(s => ({ selected: s.selected===id ? null : id })); }
+  closeDetail = () => this.setState({ selected:null });
+  resetFilters = () => this.setState({ statusFilter:'all', laneFilter:null });
+
+  renderVals(){
+    const S = this.state, M = this.M;
+    const contentW = this.contentW(), contentH = this.contentH();
+    const E = this.computeEff();
+    const effAll = this.DATA.map(n => E[n.id]);
+
+    const total = this.DATA.reduce((a,n)=>a+n.budget,0);
+    const alloc = effAll.filter(n=>this.isActiveSpend(n.status)).reduce((a,n)=>a+n.budget,0);
+    const crewCap = 80;
+    const crew = effAll.reduce((a,n)=>a+(this.isActiveSpend(n.status)?n.crew:0),0);
+    const done = effAll.filter(n=>n.status==='done').length;
+    const stats = [
+      { label:'Milestones', value:done+' / '+this.DATA.length, pct:Math.round(done/this.DATA.length*100)+'%' },
+      { label:'Capital committed', value:this.fmtM(alloc)+' / '+this.fmtM(total), pct:Math.round(alloc/total*100)+'%' },
+      { label:'Crew deployed', value:crew+' / '+crewCap, pct:Math.round(crew/crewCap*100)+'%' },
+    ];
+
+    const order = ['all','done','active','ready','risk','locked'];
+    const fLabel = { all:'All', done:'Completed', active:'In Progress', ready:'Ready', risk:'At Risk', locked:'Locked' };
+    const filters = order.map(id => {
+      const on = S.statusFilter===id, st = this.STY[id];
+      const count = id==='all' ? this.DATA.length : effAll.filter(n=>n.status===id).length;
+      return { id, label:fLabel[id], count,
+        onClick: () => this.setState(s => ({ statusFilter: s.statusFilter===id?'all':id })),
+        dotStyle: st ? `display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:2px; background:${st.dotBg==='transparent'?'transparent':st.dotBg}; border:1.5px solid ${st.dotBorder};` : 'display:none;',
+        style: `display:inline-flex; align-items:center; gap:7px; cursor:pointer; font-family:"JetBrains Mono", ui-monospace, monospace; font-size:11px; letter-spacing:0.04em; padding:7px 12px; border-radius:var(--radius-sm); background:${on?'color-mix(in srgb, var(--color-accent) 14%, transparent)':'transparent'}; color:${on?'var(--color-accent-200)':'var(--color-neutral-300)'}; border:1px solid ${on?'var(--color-accent)':'var(--color-divider)'}; box-shadow:${on?'0 0 12px rgba(46,230,230,0.2)':'none'}; transition:border-color .15s, box-shadow .15s;` };
+    });
+
+    const rail = this.LANES.map((lane,i) => {
+      const ns = effAll.filter(n=>n.lane===lane.id);
+      const laneTotal = ns.reduce((a,n)=>a+n.budget,0);
+      const on = S.laneFilter===lane.id;
+      const c = lane.color;
+      return { id:lane.id, name:lane.name, icon:lane.icon,
+        share: Math.round(laneTotal/total*100)+'%', shareLabel: Math.round(laneTotal/total*100)+'%',
+        onClick: () => this.setState(s => ({ laneFilter: s.laneFilter===lane.id?null:lane.id })),
+        iconStyle:`width:26px; height:26px; flex:none; display:grid; place-items:center; border-radius:6px; background:color-mix(in srgb, ${c} 15%, transparent); color:${c};`,
+        barStyle:`height:100%; width:${Math.round(laneTotal/total*100)}%; background:${c}; border-radius:99px;`,
+        style: `height:${M.ROW_H}px; padding:0 15px; display:flex; flex-direction:column; justify-content:center; cursor:pointer; border-top:1px solid var(--color-divider); background:${on?`color-mix(in srgb, ${c} 9%, transparent)`:'transparent'}; box-shadow:inset 3px 0 0 ${on?c:`color-mix(in srgb, ${c} 55%, transparent)`};` };
+    });
+
+    const railSpacer = `height:${M.HEAD_H}px;`;
+    const tierHeaders = this.TIERS.map((t,i) => ({ label:t.label, sub:t.sub,
+      style:`position:absolute; top:0; left:${this.cardX(i)}px; width:${M.CARD_W}px; height:${M.HEAD_H}px; display:flex; align-items:center; gap:8px;` }));
+    const laneBands = this.LANES.map((lane,i) => ({
+      style:`position:absolute; left:0; top:${M.HEAD_H+i*M.ROW_H}px; width:${contentW}px; height:${M.ROW_H}px; border-top:1px solid var(--color-divider); background:${i%2?'rgba(255,255,255,0.012)':'transparent'};` }));
+
+    const cards = effAll.map(n => {
+      const st = this.STY[n.status];
+      const sel = S.selected===n.id, dim = sel?false:this.isDimmed(n.status,n.lane);
+      const border = sel ? 'var(--color-accent)' : st.cardBorder;
+      const lc = this.laneColor(n.lane);
+      return { id:n.id, name:n.name, statusLabel:st.label, txtColor:st.txt,
+        budgetLabel:this.fmtM(n.budget), crewLabel:n.crew>0?(n.crew+''):'\u2014',
+        showProgress:(n.status==='active'||n.status==='risk'), progressPct:(n.progress||0)+'%',
+        progressColor:(n.status==='risk'?'#ff3d7f':'var(--color-accent)'),
+        onClick: () => this.select(n.id),
+        dotStyle: this.dotSpan(st),
+        cardStyle: `position:absolute; left:${this.cardX(n.tier)}px; top:${this.cardY(this.laneIndex(n.lane))}px; width:${M.CARD_W}px; height:${M.CARD_H}px; z-index:2; display:flex; flex-direction:column; padding:11px 11px 11px 13px; border-radius:var(--radius-md); background:${st.cardBg}; border:1px solid ${border}; border-left:2px solid ${dim?`color-mix(in srgb, ${lc} 45%, transparent)`:lc}; box-shadow:${sel?'0 0 0 1px var(--color-accent), 0 0 22px rgba(46,230,230,0.22)':(n.status==='ready'?'0 0 14px rgba(46,230,230,0.14)':'none')}; cursor:pointer; opacity:${dim?0.26:1}; overflow:hidden; transition:opacity .16s, border-color .16s, box-shadow .16s;`,
+        hoverStyle: dim?'opacity:0.5':'border-color:'+(sel?'var(--color-accent)':'var(--color-neutral-600)'),
+        titleStyle: `font-size:14px; font-weight:500; line-height:1.16; margin-top:8px; color:${st.title};` };
+    });
+
+    const connectors = [];
+    effAll.forEach(n => (n.prereqs||[]).forEach(pid => {
+      const p = E[pid]; if (!p) return;
+      const sx=this.cardX(p.tier)+M.CARD_W, sy=this.midY(this.laneIndex(p.lane));
+      const tx=this.cardX(n.tier),          ty=this.midY(this.laneIndex(n.lane));
+      const ex=tx-20;
+      const rel = S.selected && (n.id===S.selected || pid===S.selected);
+      const lit = p.status==='done';
+      const d = Math.abs(sy-ty)<1 ? `M ${sx} ${sy} L ${tx} ${ty}` : this.rp([[sx,sy],[ex,sy],[ex,ty],[tx,ty]], 12);
+      connectors.push({ key:pid+'>'+n.id, d, tx, ty,
+        stroke: rel?'var(--color-accent)':(lit?'var(--color-accent-700)':'rgba(120,140,150,0.28)'),
+        dotColor: rel?'var(--color-accent)':(lit?'var(--color-accent-600)':'rgba(120,140,150,0.4)'),
+        width: rel?2:1.5,
+        pathStyle: rel?'filter:drop-shadow(0 0 4px rgba(46,230,230,0.65))':'' });
+    }));
+
+    let detail = null;
+    if (S.selected){
+      const n = E[S.selected];
+      if (n){
+        const st = this.STY[n.status];
+        const prereqs = (n.prereqs||[]).map(pid => { const p=E[pid]; return { name:p.name, statusLabel:this.STY[p.status].label, dotStyle:this.dotSpan(this.STY[p.status]), onClick:()=>this.setState({selected:pid}) }; });
+        const unlocks = this.DATA.filter(d=>(d.prereqs||[]).includes(n.id)).map(u => ({ name:u.name, statusLabel:this.STY[E[u.id].status].label, dotStyle:this.dotSpan(this.STY[E[u.id].status]), onClick:()=>this.setState({selected:u.id}) }));
+        const btn = (bg,col,brd,extra) => `display:flex; align-items:center; justify-content:center; gap:7px; width:100%; margin-top:18px; cursor:pointer; font-family:var(--font-heading); font-weight:500; font-size:13px; padding:11px; border-radius:var(--radius-md); background:${bg}; color:${col}; border:1px solid ${brd}; transition:background .15s;${extra||''}`;
+        let action;
+        if (n.status==='ready') action = { label:'Allocate Resources', icon:'ph ph-lightning', onClick:()=>this.setOv(n.id,{status:'active',progress:12}), style:btn('transparent','var(--color-accent)','var(--color-accent)'), hover:'background:color-mix(in srgb, var(--color-accent) 12%, transparent)' };
+        else if (n.status==='active' || n.status==='risk') action = { label:'Advance Research  +25%', icon:'ph ph-caret-double-right', onClick:()=>{ const p=Math.min(100,(n.progress||0)+25); this.setOv(n.id, p>=100?{status:'done',progress:100}:{status:'active',progress:p}); }, style:btn('transparent','var(--color-accent)','var(--color-accent)'), hover:'background:color-mix(in srgb, var(--color-accent) 12%, transparent)' };
+        else if (n.status==='done') action = { label:'Completed', icon:'ph ph-check', onClick:()=>{}, style:btn('transparent','var(--color-neutral-400)','var(--color-divider)','cursor:default;'), hover:'' };
+        else action = { label:'Requirements not met', icon:'ph ph-lock-simple', onClick:()=>{}, style:btn('transparent','var(--color-neutral-500)','var(--color-divider)','cursor:not-allowed;'), hover:'' };
+        detail = { name:n.name, icon:this.laneMeta(n.lane).icon,
+          kicker:this.laneMeta(n.lane).name+'  \u00b7  '+this.TIERS[n.tier].label,
+          statusLabel:st.label, tagStyle:this.tagStyle(st), desc:n.desc,
+          budgetLabel:this.fmtM(n.budget), crewLabel:n.crew>0?(n.crew+' engineers'):'Unstaffed',
+          showProgress:(n.status==='active'||n.status==='risk'), progressPct:(n.progress||0)+'%',
+          progressColor:(n.status==='risk'?'#ff3d7f':'var(--color-accent)'),
+          hasPrereqs:prereqs.length>0, prereqs, hasUnlocks:unlocks.length>0, unlocks, action };
+      }
+    }
+
+    return { org:'Northwind', sub:'FY26\u201327 \u00b7 milestones, dependencies and where the budget is going',
+      stats, filters, rail, railSpacer, tierHeaders, laneBands, cards, connectors,
+      contentW, contentH,
+      canvasStyle:`position:relative; width:${contentW}px; height:${contentH}px;`,
+      svgStyle:'position:absolute; top:0; left:0; z-index:1; pointer-events:none; overflow:visible;',
+      detail, closeDetail:this.closeDetail,
+      filterActive:(S.statusFilter!=='all'||S.laneFilter!==null), resetFilters:this.resetFilters,
+      mr:this.buildMR(), feed:this.buildFeed(),
+      priWeek:'Week of Jul 14',
+      priorities:[
+        { title:'Ship Multi-region Failover to production', lane:'Platform & Infra', dri:'A. Vasquez', role:'SRE Lead', initials:'AV', target:'Fri Jul 18', progress:'60%' },
+        { title:'Land self-serve enterprise SSO + procurement', lane:'Product & Growth', dri:'J. Lin', role:'PM', initials:'JL', target:'Thu Jul 17', progress:'45%' },
+        { title:'Promote realtime inference to all prod paths', lane:'AI & Intelligence', dri:'M. Okafor', role:'ML Eng', initials:'MO', target:'Wed Jul 16', progress:'40%' },
+      ].map(p=>{ const c=this.laneColorByName(p.lane); return { ...p,
+        cardStyle:`position:relative; border:1px solid color-mix(in srgb, ${c} 28%, transparent); border-left:2px solid ${c}; border-radius:var(--radius-md); background:linear-gradient(120deg, color-mix(in srgb, ${c} 9%, var(--color-surface)), var(--color-surface) 62%); padding:14px 15px; display:flex; flex-direction:column; box-shadow:0 0 18px color-mix(in srgb, ${c} 12%, transparent);`,
+        laneStyle:`display:inline-flex; align-items:center; gap:6px; color:${c}; font-size:9px;`,
+        laneDot:`display:inline-block; width:6px; height:6px; border-radius:50%; background:${c};`,
+        avatarStyle:`width:26px; height:26px; flex:none; display:grid; place-items:center; border-radius:50%; background:color-mix(in srgb, ${c} 18%, transparent); color:${c}; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.02em;`,
+        progColor:c }; }) };
+  }
+}
+</script>
+</body>
+</html>
