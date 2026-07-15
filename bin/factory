@@ -339,9 +339,19 @@ def _write_wrapper(idir: Path, repo: Path, prompt_path: Path, log: Path) -> Path
     cb = claude_bin() or "claude"
     cdir = str(Path(cb).parent) if claude_bin() else ""
     path_prefix = f'{cdir}:' if cdir else ""
+    # Snapshot the PATH we were installed with. cron hands a job a near-empty
+    # PATH (typically just /usr/bin:/bin), so version-manager shims — pyenv,
+    # nvm, asdf, mise — vanish and `python3`/`node` silently resolve to a system
+    # binary without the agent's dependencies installed. That's the classic
+    # "works when I run it, fails at 09:00" bug, and the failure lands in a log
+    # nobody reads. Bake in the PATH that actually worked at install time.
+    snapshot = os.environ.get("PATH", "")
     wrapper.write_text(f"""#!/usr/bin/env bash
 set -euo pipefail
-export PATH="{path_prefix}$PATH:/usr/local/bin:/usr/bin:/bin"
+# PATH captured at install time — cron's own PATH omits version-manager shims.
+# Re-run `factory agents update <agent> <repo>` if your toolchain moves.
+export PATH="{path_prefix}{snapshot}:$PATH:/usr/local/bin:/usr/bin:/bin"
+export HOME="{Path.home()}"
 cd "{repo}" || exit 1
 echo "=== factory-agent run $(date -u +%Y-%m-%dT%H:%M:%SZ) ===" >> "{log}"
 exec "{cb}" -p "$(cat "{prompt_path}")" --dangerously-skip-permissions >> "{log}" 2>&1

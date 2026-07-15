@@ -60,13 +60,22 @@ State the unit in the label. A reader who thinks `◆ 8` is dollars has been mis
 
 ## Step 4 — Render
 
-Write the data JSON (schema: `reference/data-schema.md`), then:
+Write the data JSON (schema: `reference/data-schema.md`), then run the renderer **from this skill's own directory** — not from the working repo. `scripts/render.py` sits next to this SKILL.md, and the cwd is the target repo, so a relative path won't find it:
 
 ```bash
-python3 skills/factory-weekly-report/scripts/render.py <data.json> -o <out.png>
+SKILL_DIR="$HOME/.claude/skills/factory-weekly-report"   # the dir holding this SKILL.md
+python3 "$SKILL_DIR/scripts/render.py" <data.json> -o <repo>/factory/reports/<YYYY-MM-DD>.png
 ```
 
-Writes `<out.png>` and a standalone `<out.html>` beside it. The HTML inlines its fonts, icons and styles — it opens anywhere with no network and no sibling files, so it's what you share when someone wants to read the small text. Add `--open` to open it in the browser (`xdg-open`).
+If that path doesn't exist, locate it rather than guessing — the skill may be installed project-locally or under `CLAUDE_SKILLS_DIR`:
+
+```bash
+find "$HOME/.claude/skills" "$PWD/.claude/skills" -name render.py -path '*factory-weekly-report*' 2>/dev/null | head -1
+```
+
+Writes `<out.png>` and a standalone `<out.html>` beside it.
+
+**Requires Python with Playwright + Chromium** (`pip install playwright && playwright install chromium`). If the render reports playwright is missing, say so and post nothing — don't fall back to posting a report with no image. The HTML inlines its fonts, icons and styles — it opens anywhere with no network and no sibling files, so it's what you share when someone wants to read the small text. Add `--open` to open it in the browser (`xdg-open`).
 
 **Look at the PNG you just made.** Read it back and check it as a picture — clipped titles, an empty lane, a bar chart of one value, a `0%` where a number should be. It is an image; nothing but your eyes will catch an image bug.
 
