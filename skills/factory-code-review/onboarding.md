@@ -14,12 +14,22 @@ Ask in small batches (AskUserQuestion where it fits).
   capturing the project-specific checklist below for future use, but mark it inactive).
 
 ## 2. Which tool?
-- What CLI-based coding agent should run it? (e.g. Codex CLI — `codex exec`.) Confirm it's actually
-  installed and authenticated on the box `factory-implement` runs on — don't configure a tool that
-  isn't there.
-- Help the user write the exact **one-shot invocation** — see `factory-code-review/SKILL.md` for a
-  worked Codex CLI example (sandbox/permission flags, network access, non-interactive approval mode).
-  The prompt it runs must point at `factory-code-review/SKILL.md`'s **absolute path** — external tools
+- What CLI-based coding agent should run it? (e.g. Codex CLI, Cursor Agent, Aider, opencode.) Confirm
+  it's actually installed and authenticated on the box `factory-implement` runs on — don't configure
+  a tool that isn't there.
+- **Smoke-test the exact invocation before writing it into `code-review.md` — do not trust a
+  remembered or researched flag set.** CLI flags for these tools drift release to release (e.g.
+  Codex CLI's approval flag has changed shape more than once). Run `<tool> exec --help` / `<tool>
+  --help` yourself, confirm the non-interactive/headless entry point and its actual flag names, then
+  run one trivial prompt end-to-end (e.g. "reply with exactly: OK") and confirm it actually returns —
+  not just that it launched. Only write the command down once you've seen it work.
+  - If it **errors immediately** with an argument-parse complaint, the docs/your memory are stale —
+    diff the real `--help` output against what you were about to pass.
+  - If it **hangs**, you're missing the non-interactive flag (it dropped into an interactive
+    TUI/prompt waiting on approval).
+  - If it **runs but produces nothing useful**, that's auth or sandbox/network, not flags — check it
+    can actually reach the tracker CLI (`gh`/`glab`) from inside its sandbox.
+- The prompt it runs must point at `factory-code-review/SKILL.md`'s **absolute path** — external tools
   can't resolve Claude Code's skill names.
 
 ## 3. Credentials
