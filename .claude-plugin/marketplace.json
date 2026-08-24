@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "factory",
+  "description": "Factory — a backlog intake & execution system for Claude Code.",
+  "owner": {
+    "name": "Mason Geloso",
+    "url": "https://github.com/MasonGeloso"
+  },
+  "plugins": [
+    {
+      "name": "factory",
+      "source": "./",
+      "description": "Brain-dump → groomed backlog → autonomous execution. 16 skills covering intake, planning, implementation, review, demos, sync meetings, and scheduled reporting.",
+      "category": "workflow"
+    }
+  ]
+}

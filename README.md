@@ -26,7 +26,7 @@ flowchart TB
 
     subgraph deliver [Take work to done]
       IMPL["/factory-implement (driver)"]
-      IMPL --> PLAN["/factory-plan"] --> RR["/factory-reresearch"] --> EXE["/factory-execute"] --> RC["/factory-recheck"] --> DEMO["demo-video / demo-terminal"]
+      IMPL --> PLAN["/factory-plan"] --> RR["/factory-reresearch"] --> EXE["/factory-execute"] --> RC["/factory-recheck"] --> DEMO["demo-video / demo-terminal"] --> REVIEW["/factory-code-review\n(optional PR gate)"]
     end
 
     subgraph sync [Alignment loop]
@@ -53,13 +53,45 @@ flowchart TB
 
 ## Install
 
+### As a Claude Code plugin (recommended)
+
+Factory ships as a plugin with its own marketplace, so installing and updating it are two commands inside Claude Code:
+
+```
+/plugin marketplace add MasonGeloso/factory
+/plugin install factory@factory
+```
+
+Or from a terminal:
+
 ```bash
-git clone https://github.com/MasonGeloso/claude-factory.git
-cd claude-factory
+claude plugin marketplace add MasonGeloso/factory
+claude plugin install factory@factory
+```
+
+Claude Code loads the skills straight from the plugin — nothing is copied into `~/.claude/skills`. Update with `/plugin update factory`, remove with `/plugin uninstall factory`.
+
+Skills installed by a plugin are namespaced: `/factory:factory-intake`, `/factory:factory-implement`, and so on. (Typing the bare name still resolves — the namespaced form is what shows up in the skill list.)
+
+The scheduled agents need the **Factory CLI**, which lives inside the plugin. `/factory-cli` runs it for you, or link it onto your PATH once:
+
+```
+/factory-cli install       # symlinks ~/.local/bin/factory → the plugin's bin/factory
+```
+
+After that, `factory agents install ai-pm /path/to/repo` works from any terminal. In plugin mode `factory install` only does the symlink — it never copies skills, and `factory update` defers to `/plugin update`.
+
+### From a git checkout
+
+```bash
+git clone https://github.com/MasonGeloso/factory.git
+cd factory
 ./install.sh
 ```
 
-This copies the skills into `~/.claude/skills/` (any existing same-named skill is backed up to `<name>.bak-<timestamp>`; unchanged skills are skipped). Set `CLAUDE_SKILLS_DIR` to install elsewhere.
+This copies the skills into `~/.claude/skills/` (any existing same-named skill is backed up to `<name>.bak-<timestamp>`; unchanged skills are skipped). Set `CLAUDE_SKILLS_DIR` to install elsewhere. Skill names are un-namespaced this way: `/factory-intake`.
+
+Pick one or the other — running both gives every skill a duplicate.
 
 `install.sh` is a thin wrapper around the **Factory CLI** (`bin/factory`, Python 3, zero dependencies). `factory install` also symlinks the CLI itself onto your PATH (`~/.local/bin/factory` by default — override with `FACTORY_BIN_DIR`), so after the first install you can run `factory` from anywhere:
 
@@ -74,7 +106,7 @@ factory             # no args → full-screen TUI (arrow-key nav) for all of the
 One-liner:
 
 ```bash
-git clone https://github.com/MasonGeloso/claude-factory.git /tmp/claude-factory && /tmp/claude-factory/install.sh
+git clone https://github.com/MasonGeloso/factory.git /tmp/factory && /tmp/factory/install.sh
 ```
 
 ## Quick start
@@ -95,6 +127,7 @@ In any repo:
 | `factory-reresearch` | Attack the plan, find holes, fix them in place |
 | `factory-implement` | Granular todo list, build, verify — don't stop until done |
 | `factory-recheck` | Fresh-eyes review → PASS/FAIL verdict |
+| `factory-code-review` | Optional second-opinion review of the opened PR — runnable by an external CLI agent (e.g. Codex) or in-context; blocking Handoff gate |
 | `factory-demo-video` | Record a browser screencast of the change (web UI) |
 | `factory-demo-terminal` | Record a terminal screencast (CLI / stdout) |
 | `factory-schedule-sync` | Build a high-leverage sync agenda from the backlog + attendees + priorities |
@@ -117,6 +150,8 @@ Three agents ship today:
 - **Weekly Tech-Tree Report** (`weekly-report`) — curates the tracker into a tech-tree investment board (what shipped, what's in flight, what's blocked behind what), renders it to a PNG, and posts the image. The board covers a rolling 7-day window; it posts each morning by default, or once a week with `--interval 10080`.
 
 Where each scheduled post goes is per-org config: the **Scheduled posts** table in `factory/communication.md` names the channel, format, and upload call. No destination means the agent builds its artifact and posts nothing — it never guesses a channel.
+
+Agent definitions live in `factory-agents/` in this repo (one directory per agent: `agent.json` + `prompt.md`). Not `agents/` — Claude Code reads a plugin's `agents/` directory as subagent definitions, and these are cron jobs, not subagents.
 
 ```bash
 factory agents list                          # available + installed, with update flags

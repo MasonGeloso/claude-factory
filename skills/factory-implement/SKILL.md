@@ -36,10 +36,13 @@ These are already-installed **user skills**. The normal way to run one is the **
 | Recheck | `factory-recheck` | `~/.claude/skills/factory-recheck/SKILL.md` |
 | Demo (web UI) | `factory-demo-video` | `~/.claude/skills/factory-demo-video/SKILL.md` |
 | Demo (CLI) | `factory-demo-terminal` | `~/.claude/skills/factory-demo-terminal/SKILL.md` |
+| Code review (optional, Handoff gate) | `factory-code-review` | `~/.claude/skills/factory-code-review/SKILL.md` — see the exception note below, invocation differs |
 
 The factory skills all live under `~/.claude/skills/<name>/` (some, like `factory-demo-terminal`, have an `assets/` or `references/` subdir alongside `SKILL.md`). The suite is self-contained — every skill it calls is a `factory-*` skill. (The web-UI demo still relies on the external `playwright-cli` skill/tool for browser automation; that's a tool dependency, not part of the factory pipeline.)
 
 If you ever can't invoke one of these by name, stop and tell the user the skill is missing — do not improvise the work inline or fabricate a substitute.
+
+**One exception: `factory-code-review`** (used in Handoff, Step 6) is invoked *differently* when `factory/code-review.md` configures an external tool — you shell out to that tool (e.g. `codex exec`) with a prompt pointing at `~/.claude/skills/factory-code-review/SKILL.md`'s **absolute path**, since an external CLI agent can't resolve a Claude Code skill name. If no external tool is configured (or `factory/code-review.md` doesn't exist), run `factory-code-review` yourself via the Skill tool instead — same review, just performed in-context.
 
 ---
 
@@ -68,6 +71,7 @@ The point of saying all this: take the stress off. Thoroughness is the job.
    - `factory/deployment.md` — worktree base dir, how to run/demo the stack, and the demo mode. **Also check for `factory/dev-manager.md`** — if the repo has one, it is the canonical provisioning guide (worktrees, env copy, boot/pause/teardown) and overrides the manual instructions in `deployment.md`.
    - The **Handoff & status** section of `factory/intake.md` — where to post updates and what "ready for review" means.
 4. If any of those are **missing or incomplete**, run **`/factory-onboard`** — the single, partial-aware onboarding skill; it detects exactly which `factory/` files are missing (here: `codebases.md`, `deployment.md`, the handoff section of `intake.md`) and fills only those, using this skill's [onboarding.md](onboarding.md) as its reference. If `factory-onboard` isn't available, fall back to [onboarding.md](onboarding.md) directly. Then continue. Do not guess infrastructure or status conventions.
+5. Check for `factory/code-review.md` (optional — governs the Handoff review gate in Step 6). If it's missing, this run just treats external review as **disabled** and proceeds; no need to block on it or force onboarding. If the user wants it, offer to run `/factory-onboard` (it will pick up this one module using `factory-code-review/onboarding.md`) before Handoff, or onboard it later before the next run.
 
 ---
 
@@ -158,11 +162,15 @@ This is a **mandatory phase, not an optional epilogue.** Once Recheck passes and
 
 1. Commit in the worktree (on the task branch). Push if the project's handoff style is auto-push (skip only if it's explicitly "wait for the user to push").
 2. Open a **pull request** from the task branch if that's the project's handoff style (per `intake.md` / the provisioning doc), and link it on the issue.
-3. Move the tracker status to the configured **ready-for-review** state — then confirm it actually changed.
-4. **Post the demo as a comment** on the issue ("here's it working"), per the project's handoff config (the config says exactly how — link/attach). If demo mode is `none`, say so instead. **Do not end the run without doing this.**
-5. **Post the re-provision one-liner** (if the provisioning doc documents one) so the owner can spin the exact stack back up and poke at it themselves — the demo video is not the only review.
-6. Post a **concise log** comment: key decisions, assumptions made, open questions.
-7. **End the run by leaving the stack the way the repo's `factory/` docs say to** — if they document a non-destructive pause, use it (free the box's resources while keeping containers, data, and the worktree intact so the owner can resume in seconds). **Do not tear the stack down, delete the worktree, or remove any data volume at handoff** — that cleanup happens only after the owner has reviewed and said so. If the docs don't document a pause, leave a clear note of what is left running.
+3. **External code review gate** (only if `factory/code-review.md` exists with **Enabled: yes**) — run `factory-code-review` against the PR you just opened:
+   - If `code-review.md` configures an external tool, shell out to it now with its documented invocation (prompt pointing at `~/.claude/skills/factory-code-review/SKILL.md`'s absolute path and this PR's URL). Otherwise, run `factory-code-review` yourself via the Skill tool.
+   - Read the result for its `VERDICT:` line. **`FAIL`** → go back to `factory-plan`/`factory-execute`, fix it, re-push, and re-run this gate — do not proceed past it on a FAIL. **`PASS`** → continue.
+   - Loop here until `PASS` (or the module says disabled/is missing, in which case skip this step entirely — `factory-recheck` already covered the in-context review).
+4. Move the tracker status to the configured **ready-for-review** state — then confirm it actually changed.
+5. **Post the demo as a comment** on the issue ("here's it working"), per the project's handoff config (the config says exactly how — link/attach). If demo mode is `none`, say so instead. **Do not end the run without doing this.**
+6. **Post the re-provision one-liner** (if the provisioning doc documents one) so the owner can spin the exact stack back up and poke at it themselves — the demo video is not the only review.
+7. Post a **concise log** comment: key decisions, assumptions made, open questions.
+8. **End the run by leaving the stack the way the repo's `factory/` docs say to** — if they document a non-destructive pause, use it (free the box's resources while keeping containers, data, and the worktree intact so the owner can resume in seconds). **Do not tear the stack down, delete the worktree, or remove any data volume at handoff** — that cleanup happens only after the owner has reviewed and said so. If the docs don't document a pause, leave a clear note of what is left running.
 
 ## Definition of done — DO NOT report the task finished until ALL are true
 
@@ -173,6 +181,7 @@ Before you say "done" / "ready" / hand back to the user, every box must be check
 - [ ] **Verified live on the running stack** (Step 4) — seen working with your own eyes, not just code-reviewed
 - [ ] Demo recorded **and verified** (you looked at it), or demo mode is `none`
 - [ ] PR opened (if that's the project's handoff style)
+- [ ] External code review gate is `PASS` (if `factory/code-review.md` enables it; skip if disabled/missing)
 - [ ] Tracker status moved to ready-for-review (confirmed)
 - [ ] Demo posted as an issue comment (or stated `none`)
 - [ ] Re-provision one-liner posted (if the provisioning doc documents one)

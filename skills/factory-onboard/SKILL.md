@@ -32,6 +32,7 @@ Each row is one context file. A module is **required-by** one or more skills/age
 | `communication.md` | comms medium, auth, channels, reply policy, scheduled-post destinations | ai-pm, daily-digest, sync-recap, weekly-report | `factory-communication-setup/templates/communication.md` + that skill |
 | `priority.md` | current priorities (today / week / month) + last-updated | daily-digest, schedule-sync, sync-recap | [templates/priority.md](templates/priority.md) |
 | `meetings.md` | sync cadence, who attends, agenda format, decision style | schedule-sync, sync-recap | [templates/meetings.md](templates/meetings.md) |
+| `code-review.md` | whether an external second-opinion PR review is enabled, which tool/invocation, project-specific checklist | implement (Handoff gate) | `factory-code-review/templates/code-review.md` + `factory-code-review/onboarding.md` |
 
 > Keep this table as the single source of truth. When a new skill needs a new context file, add a row here and add its interview + template; a re-run of `/factory-onboard` will detect and offer it automatically.
 

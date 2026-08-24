@@ -4,7 +4,7 @@
 
 export const SERVICES = [
   {
-    id: 'core', name: 'CORE PLATFORM', repo: 'claude-factory',
+    id: 'core', name: 'CORE PLATFORM', repo: 'factory',
     color: 0x5fd9e7, css: '#5fd9e7', pos: [8, -4], radius: 31, elev: 1.6,
     desc: 'Orchestration heart of the org. Session routing, agent lifecycle, billing.',
     modules: [

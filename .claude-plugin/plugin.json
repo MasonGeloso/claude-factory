@@ -1,0 +1,27 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "factory",
+  "version": "1.0.0",
+  "description": "Backlog intake & execution system for Claude Code: turn a brain-dump or meeting transcript into groomed issues in your real tracker, then pick one up and drive it to ready-for-review autonomously.",
+  "author": {
+    "name": "Mason Geloso",
+    "url": "https://github.com/MasonGeloso"
+  },
+  "homepage": "https://github.com/MasonGeloso/factory#readme",
+  "repository": "https://github.com/MasonGeloso/factory",
+  "license": "MIT",
+  "keywords": [
+    "backlog",
+    "intake",
+    "issue-tracker",
+    "github",
+    "gitlab",
+    "jira",
+    "planning",
+    "code-review",
+    "automation",
+    "product-management",
+    "standup",
+    "reporting"
+  ]
+}

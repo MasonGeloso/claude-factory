@@ -1,6 +1,6 @@
 ---
 name: factory-execute
-description: The /execute (build) step of the factory pipeline — take an ALREADY-FORMED, heavily-researched plan and build it: set a granular todo list and implement it one item at a time, verifying as you go, never stopping until 100% done. REQUIRES an existing plan; it is NOT the entry point for a raw task. The factory-implement driver runs plan + re-research first and then invokes this; recheck, stand-up, verify, demo, and handoff happen back in the driver after this returns. Use when the user says "factory execute", "execute the plan", "build the plan", or "build it" AND a researched plan already exists.
+description: 'The /execute (build) step of the factory pipeline — take an ALREADY-FORMED, heavily-researched plan and build it: set a granular todo list and implement it one item at a time, verifying as you go, never stopping until 100% done. REQUIRES an existing plan; it is NOT the entry point for a raw task. The factory-implement driver runs plan + re-research first and then invokes this; recheck, stand-up, verify, demo, and handoff happen back in the driver after this returns. Use when the user says "factory execute", "execute the plan", "build the plan", or "build it" AND a researched plan already exists.'
 ---
 
 # Factory — Execute (build the researched plan)

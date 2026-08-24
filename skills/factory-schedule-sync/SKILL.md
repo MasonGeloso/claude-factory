@@ -1,6 +1,6 @@
 ---
 name: factory-schedule-sync
-description: Build a high-leverage agenda for an alignment/sync meeting. Looks at recent changes, the backlog, and issues that lack context or alignment, cross-references who's attending against ownership, and proposes a discussion list aimed at decisions and priorities — not status theater. Collaborative: you refine the agenda together, and refining it surfaces context worth writing back to issues. Reads per-project rules from `factory/`. Use when the user runs /factory-schedule-sync, says "prep for the sync", "build the meeting agenda", or "what should we talk about".
+description: 'Build a high-leverage agenda for an alignment/sync meeting. Looks at recent changes, the backlog, and issues that lack context or alignment, cross-references who''s attending against ownership, and proposes a discussion list aimed at decisions and priorities — not status theater. Collaborative: you refine the agenda together, and refining it surfaces context worth writing back to issues. Reads per-project rules from `factory/`. Use when the user runs /factory-schedule-sync, says "prep for the sync", "build the meeting agenda", or "what should we talk about".'
 ---
 
 # Factory — Schedule Sync (agenda builder)

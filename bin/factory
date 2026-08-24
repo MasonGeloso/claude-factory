@@ -27,13 +27,35 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_SRC = REPO_ROOT / "skills"
-AGENTS_SRC = REPO_ROOT / "agents"
+# Not `agents/`: Claude Code auto-loads a plugin's agents/ directory as subagent
+# definitions, and these are cron-style agents, not subagents.
+AGENTS_SRC = REPO_ROOT / "factory-agents"
 
 SKILLS_DEST = Path(os.environ.get("CLAUDE_SKILLS_DIR", Path.home() / ".claude" / "skills"))
 FACTORY_HOME = Path(os.environ.get("FACTORY_HOME", Path.home() / ".claude" / "factory"))
 INSTALLED_JSON = FACTORY_HOME / "installed-agents.json"
 
 IS_MAC = platform.system() == "Darwin"
+
+# When Factory is installed as a Claude Code plugin, its checkout lives inside
+# the plugin cache and Claude Code loads the skills straight from there. Copying
+# them into ~/.claude/skills as well would give every skill a duplicate, so in
+# plugin mode `install`/`update` only manage the CLI symlink and defer skill
+# updates to `/plugin update`.
+CLAUDE_CONFIG_DIR = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
+PLUGIN_DIR = CLAUDE_CONFIG_DIR / "plugins"
+
+
+def plugin_mode() -> bool:
+    if os.environ.get("FACTORY_FORCE_SKILL_INSTALL"):
+        return False
+    try:
+        REPO_ROOT.relative_to(PLUGIN_DIR)
+        return True
+    except ValueError:
+        pass
+    # CLAUDE_CONFIG_DIR may differ from the one the plugin was installed under.
+    return "plugins" in REPO_ROOT.parts and "cache" in REPO_ROOT.parts
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +135,9 @@ def list_skill_dirs() -> list[Path]:
 
 def skills_status() -> list[dict]:
     rows = []
+    if plugin_mode():
+        # Claude Code loads these from the plugin cache; there is no copy to compare.
+        return [{"name": src.name, "state": "loaded (plugin)"} for src in list_skill_dirs()]
     for src in list_skill_dirs():
         dest = SKILLS_DEST / src.name
         if not dest.exists():
@@ -125,13 +150,46 @@ def skills_status() -> list[dict]:
     return rows
 
 
+PLUGIN_SHIM = """#!/usr/bin/env bash
+# Factory CLI shim — installed by `factory install` while Factory was running as
+# a Claude Code plugin. Every `/plugin update` unpacks the plugin into a NEW
+# versioned cache directory, so a symlink to one of them dangles on the next
+# update. Resolve the current one at run time instead: newest bin/factory under
+# the plugin cache wins.
+set -eo pipefail
+root="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins"
+shopt -s nullglob
+cands=( "$root"/cache/*/factory/*/bin/factory "$root"/marketplaces/*/bin/factory )
+if [ ${#cands[@]} -eq 0 ]; then
+  echo "error: the Factory plugin is not installed under $root." >&2
+  echo "       Run /plugin install factory@factory in Claude Code." >&2
+  exit 1
+fi
+# Newest first — `ls -t` behaves the same on GNU and BSD/macOS.
+cli="$(ls -t "${cands[@]}" | head -1)"
+exec python3 "$cli" "$@"
+"""
+
+
 def install_cli(ts: str) -> None:
-    """Symlink `factory` onto PATH so it can be run from anywhere."""
+    """Put `factory` on PATH so it can be run from anywhere."""
     bindir = Path(os.environ.get("FACTORY_BIN_DIR", Path.home() / ".local" / "bin"))
     bindir.mkdir(parents=True, exist_ok=True)
     link = bindir / "factory"
     target = Path(__file__).resolve()
-    if link.is_symlink() and link.resolve() == target:
+    if plugin_mode():
+        # A shim, not a symlink — the plugin's cache path changes on every update.
+        if link.is_file() and not link.is_symlink() and link.read_text() == PLUGIN_SHIM:
+            say(f"  • CLI shim already installed: {link}")
+        else:
+            if link.is_symlink() or link.exists():
+                backup = link.with_name(f"factory.bak-{ts}")
+                shutil.move(str(link), str(backup))
+                say(f"  • replaced existing {link.name} (backed up to {backup.name})")
+            link.write_text(PLUGIN_SHIM)
+            link.chmod(0o755)
+            say(f"  • CLI shim installed: {link} → newest factory plugin in the cache")
+    elif link.is_symlink() and link.resolve() == target:
         say(f"  • CLI already linked: {link}")
     else:
         if link.is_symlink() or link.exists():
@@ -145,6 +203,15 @@ def install_cli(ts: str) -> None:
 
 
 def cmd_install(_args=None) -> None:
+    if plugin_mode():
+        say("Factory is installed as a Claude Code plugin — Claude Code loads the")
+        say(f"skills directly from {SKILLS_SRC}.")
+        say("Skipping the copy into ~/.claude/skills (it would duplicate every skill).")
+        say("Use `/plugin update factory` in Claude Code to pull new versions.")
+        say("")
+        say("Installing CLI")
+        install_cli(datetime.now().strftime("%Y%m%d-%H%M%S"))
+        return
     say("Installing Factory skills")
     say(f"  from: {SKILLS_SRC}")
     say(f"  to:   {SKILLS_DEST}")
@@ -175,6 +242,13 @@ def cmd_install(_args=None) -> None:
 
 def cmd_update(_args=None) -> None:
     """git pull the factory checkout, then re-install changed skills."""
+    if plugin_mode():
+        say("Factory is installed as a Claude Code plugin — updates come from the")
+        say("plugin marketplace, not from this checkout.")
+        say("Run `/plugin update factory` inside Claude Code.")
+        say("")
+        cmd_status()
+        return
     if (REPO_ROOT / ".git").exists():
         say("Pulling latest factory…")
         res = subprocess.run(
@@ -195,6 +269,9 @@ def cmd_update(_args=None) -> None:
 
 
 def cmd_status(_args=None) -> None:
+    if plugin_mode():
+        say(f"Mode: Claude Code plugin ({REPO_ROOT})")
+        say("")
     say("Skills:")
     for r in skills_status():
         say(f"  {r['state']:>18}  {r['name']}")
@@ -633,7 +710,7 @@ class _App:
         y = 5
         self._put(y, 3, "SKILLS", c.color_pair(1) | c.A_BOLD); y += 1
         for r in skills_status():
-            if r["state"] == "up to date":
+            if r["state"] in ("up to date", "loaded (plugin)"):
                 dot, attr = "●", c.color_pair(3)
             elif r["state"] == "update available":
                 dot, attr = "●", c.color_pair(4)

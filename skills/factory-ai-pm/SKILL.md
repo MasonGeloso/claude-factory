@@ -7,7 +7,7 @@ description: Run as an automated AI Product Manager. On each (usually scheduled)
 
 *Every few minutes: read what the team said, and make the board reflect it.*
 
-This skill is normally invoked by the **`ai-pm` cron agent** (see `agents/ai-pm/` in the factory repo), running non-interactively via `claude -p "..." --dangerously-skip-permissions`. It can also be run by hand. Assume **no human is watching** unless one clearly is.
+This skill is normally invoked by the **`ai-pm` cron agent** (see `factory-agents/ai-pm/` in the factory repo), running non-interactively via `claude -p "..." --dangerously-skip-permissions`. It can also be run by hand. Assume **no human is watching** unless one clearly is.
 
 It uses the same primitives as [`factory-intake`](../factory-intake/SKILL.md) — the tracker, its CLI, the classification scheme, the no-secrets rule — but its trigger is a **conversation stream** (Slack, Discord, …) rather than a pasted transcript, and it runs on a loop.
 
