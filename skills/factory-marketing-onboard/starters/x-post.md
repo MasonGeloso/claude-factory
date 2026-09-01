@@ -59,22 +59,36 @@ check the composer's preview before sending.
   a common miss.
 - **Always look at the image before attaching it.** A license/rights check is not a composition
   check — read the actual picture.
-- **Sourcing from Wikimedia Commons:** query the category API directly rather than guessing a file
-  URL — it returns the real filenames and their license metadata in one call:
+- **Sourcing from Wikimedia Commons:** one call gets you filenames, URLs, and license metadata
+  together — use `generator=categorymembers` rather than a plain `list` query plus a second
+  `imageinfo` round-trip:
   ```bash
-  curl -s "https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:<Name>&cmtype=file&format=json"
+  curl -sS -A "<YourTool>/1.0 (<contact-email-or-url>)" \
+    "https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=categorymembers&gcmtitle=Category:<Name>&gcmtype=file&gcmlimit=25&prop=imageinfo&iiprop=url|size|extmetadata&iiurlwidth=1600"
   ```
-  Then resolve each candidate's actual license via `imageinfo` (`iiprop=extmetadata`) before using it
-  — don't assume from the category alone. **Prefer CC BY over CC BY-SA** when both are available for
-  the same subject — CC BY-SA's share-alike clause can complicate reuse in a post's context in ways
-  a plain attribution license doesn't; when only CC BY-SA exists, it's still usable, just note the
-  license (not only the author) in the ALT-text attribution.
+  Wikimedia's API etiquette expects a real contact-identifying User-Agent, not a generic client
+  string — put this project's own tool name/contact in it. Grab the returned `thumburl` at
+  ~1600-1920px, not the multi-thousand-pixel original. **Prefer CC BY over CC BY-SA** when both are
+  available for the same subject — CC BY-SA's share-alike clause can complicate reuse in a post's
+  context in ways a plain attribution license doesn't; when only CC BY-SA exists, it's still usable,
+  just note the license (not only the author) in the ALT-text attribution.
 - **Attribution goes in the ALT text**, not the post body — there's no room in the body, and it also
   makes the post accessible. Hover the attached image → **Add description**, paste, **Save**.
   Confirm the small **ALT** badge appears on the thumbnail afterward.
+  ⚠️ **A coordinate click on the "Add description" link tends to land as a hover only** — the composer
+  reflows as the image finishes rendering, so coordinates read a moment earlier are stale by the time
+  the click lands. Call it directly instead and confirm the navigation actually happened:
+  ```js
+  document.querySelector('a[href*="compose/post/media"]').click();
+  await new Promise(r=>setTimeout(r,1200));
+  location.href   // must have changed to the media-edit URL
+  ```
 - X does not fire a native OS file picker for uploads — the file input is just rendered on the page;
   tag inputs by a distinguishing attribute (`accept`, position) if more than one exists, then upload.
   The input can render lazily — query for it in its own tool call if a batched query returns nothing.
+  **The same duplication trap as the text area applies to file inputs**: a compose page can carry two
+  (and a quote-tweet composer its own), so confirm the one you're uploading to actually sits inside
+  the active modal (`el.closest('[aria-modal="true"]')`) rather than trusting a raw index.
 
 ## ⚠️ The composer stacks — this causes real double-posts
 
@@ -132,7 +146,12 @@ standing authorization to publish directly, which overrides the interactive defa
 ## Reading back a post's own URL (needed for quote-tweets / self-replies)
 
 After a post confirms as sent, the newest post in the account's own timeline (skip the pinned one)
-is the one just published — open it to confirm it's the right one before quoting or replying to it.
+is the one just published — open it to confirm it's the right one before quoting or replying to it:
+```js
+[...document.querySelectorAll('a[href*="/<handle>/status/"]')]
+  .map(a=>a.getAttribute('href')).filter(h=>new RegExp(`^/<handle>/status/\\d+$`).test(h));
+// the pinned post is always in this list — skip it, take the newest remaining one
+```
 A quote-tweet needs a published parent; you cannot quote a draft, so publish first, read the URL
 back, then build anything that references it.
 

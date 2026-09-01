@@ -110,7 +110,12 @@ usually isn't).
 
 Query the editor's root contenteditable element and walk its children, checking for the expected
 mix of heading/image/paragraph blocks in the expected order, rather than trusting that clicks landed
-correctly by assumption.
+correctly by assumption:
+```js
+const ed=document.querySelector('[contenteditable="true"][role="textbox"]');
+[...ed.children[0].children].map(b => (b.querySelector('h1')?'H: ':b.querySelector('img')?'IMG: ':'p: ')
+  + b.innerText.replace(/\s+/g,' ').slice(0,34));
+```
 
 ## Never
 
