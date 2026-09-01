@@ -4,7 +4,7 @@
   "description": "Every hour, checks the project's posting timetable and fires whatever content type(s) are due — building each against its target platform(s), respecting per-content-type autonomy (autonomous-publish vs draft-only) and a per-platform account lock.",
   "skill": "factory-marketing-post",
   "setup_skill": "factory-marketing-onboard",
-  "requires_files": ["factory/marketing/platforms.md", "factory/marketing/content-types.md", "factory/marketing/schedule.md"],
+  "requires_files": ["factory/marketing/platforms.md", "factory/marketing/content-types/README.md", "factory/marketing/schedule.md"],
   "prompt_file": "prompt.md",
   "default_interval_minutes": 60,
   "needs_chrome": true

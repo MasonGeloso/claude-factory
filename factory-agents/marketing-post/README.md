@@ -6,9 +6,9 @@ replacing what would otherwise be a bespoke script per content type.
 
 ## What it does each run
 
-1. Reads `factory/marketing/schedule.md` (the timetable), `content-types.md` (how to build each
-   content type and its autonomy mode), and `platforms.md` (mechanics + the mandatory account-switch
-   check for each platform).
+1. Reads `factory/marketing/schedule.md` (the timetable), `content-types/` (one file per content type,
+   how to build it and its autonomy mode — see `content-types/README.md` for the index), and
+   `platforms.md` (mechanics + the mandatory account-switch check for each platform).
 2. Evaluates every scheduled row's gate against the current time in the project's own configured
    timezone — a tick can fire zero, one, or several content types.
 3. For each content type that fires: verifies the right account is active, acquires a lock scoped to
@@ -31,7 +31,7 @@ repo's `factory/marketing/` directory.
 factory agents install marketing-post /path/to/repo
 ```
 
-If `factory/marketing/platforms.md` (or `content-types.md` / `schedule.md`) doesn't exist yet, the
+If `factory/marketing/platforms.md` (or `content-types/README.md` / `schedule.md`) doesn't exist yet, the
 installer launches an interactive Claude Code session running `factory-marketing-onboard` to build
 them — with you, not just from a form — then schedules the agent.
 
