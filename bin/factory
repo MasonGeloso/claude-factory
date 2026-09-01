@@ -411,7 +411,7 @@ def schedule_remove(key: str, scheduler: str) -> None:
 # ---------------------------------------------------------------------------
 # Agent install / update / remove
 # ---------------------------------------------------------------------------
-def _write_wrapper(idir: Path, repo: Path, prompt_path: Path, log: Path) -> Path:
+def _write_wrapper(idir: Path, repo: Path, prompt_path: Path, log: Path, needs_chrome: bool = False) -> Path:
     wrapper = idir / "run.sh"
     cb = claude_bin() or "claude"
     cdir = str(Path(cb).parent) if claude_bin() else ""
@@ -423,15 +423,22 @@ def _write_wrapper(idir: Path, repo: Path, prompt_path: Path, log: Path) -> Path
     # "works when I run it, fails at 09:00" bug, and the failure lands in a log
     # nobody reads. Bake in the PATH that actually worked at install time.
     snapshot = os.environ.get("PATH", "")
+    # --chrome is load-bearing for any agent that drives a real browser session
+    # (e.g. the marketing dispatcher): -p disables the Claude-in-Chrome bridge by
+    # default, and without it the run has no browser tools and may reach for
+    # headless automation on a site that bans it. DISPLAY is best-effort so the
+    # bridge can find a desktop session from cron's stripped environment.
+    chrome_flag = " --chrome" if needs_chrome else ""
+    display_line = 'export DISPLAY="${DISPLAY:-:0}"\n' if needs_chrome else ""
     wrapper.write_text(f"""#!/usr/bin/env bash
 set -euo pipefail
 # PATH captured at install time — cron's own PATH omits version-manager shims.
 # Re-run `factory agents update <agent> <repo>` if your toolchain moves.
 export PATH="{path_prefix}{snapshot}:$PATH:/usr/local/bin:/usr/bin:/bin"
 export HOME="{Path.home()}"
-cd "{repo}" || exit 1
+{display_line}cd "{repo}" || exit 1
 echo "=== factory-agent run $(date -u +%Y-%m-%dT%H:%M:%SZ) ===" >> "{log}"
-exec "{cb}" -p "$(cat "{prompt_path}")" --dangerously-skip-permissions >> "{log}" 2>&1
+exec "{cb}"{chrome_flag} -p "$(cat "{prompt_path}")" --dangerously-skip-permissions >> "{log}" 2>&1
 """)
     wrapper.chmod(0o755)
     return wrapper
@@ -482,7 +489,7 @@ def cmd_agents_install(args) -> None:
     log = idir / "logs" / "run.log"
     prompt_path = idir / "prompt.md"
     shutil.copyfile(agent["prompt_path"], prompt_path)
-    wrapper = _write_wrapper(idir, repo, prompt_path, log)
+    wrapper = _write_wrapper(idir, repo, prompt_path, log, needs_chrome=bool(agent.get("needs_chrome")))
 
     interval = args.interval or agent.get("default_interval_minutes", 5)
     job_id = schedule_install(key, wrapper, interval, log)
@@ -515,7 +522,7 @@ def cmd_agents_update(args) -> None:
     prompt_path = idir / "prompt.md"
     shutil.copyfile(agent["prompt_path"], prompt_path)
     log = Path(rec["log"])
-    wrapper = _write_wrapper(idir, repo, prompt_path, log)
+    wrapper = _write_wrapper(idir, repo, prompt_path, log, needs_chrome=bool(agent.get("needs_chrome")))
     key = instance_key(agent["id"], slug)
     schedule_remove(key, rec["scheduler"])
     job_id = schedule_install(key, wrapper, interval, log)

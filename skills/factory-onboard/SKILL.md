@@ -33,6 +33,9 @@ Each row is one context file. A module is **required-by** one or more skills/age
 | `priority.md` | current priorities (today / week / month) + last-updated | daily-digest, schedule-sync, sync-recap | [templates/priority.md](templates/priority.md) |
 | `meetings.md` | sync cadence, who attends, agenda format, decision style | schedule-sync, sync-recap | [templates/meetings.md](templates/meetings.md) |
 | `code-review.md` | whether an external second-opinion PR review is enabled, which tool/invocation, project-specific checklist | implement (Handoff gate) | `factory-code-review/templates/code-review.md` + `factory-code-review/onboarding.md` |
+| `marketing/platforms.md` | every platform posted to, account-switch checks, mechanics, tone defaults | marketing-post, and any on-demand marketing content skill | `factory-marketing-onboard/templates/platforms.md` + starters + that skill |
+| `marketing/content-types/` | one file per content type (how to build it, which platform(s), autonomy mode) + an index | marketing-post | `factory-marketing-onboard/templates/content-type.md` + `content-types-index.md` + that skill |
+| `marketing/schedule.md` | the posting timetable — windows, caps, jitter, pacing, gate type per scheduled content type | marketing-post | `factory-marketing-onboard/templates/schedule.md` + that skill |
 
 > Keep this table as the single source of truth. When a new skill needs a new context file, add a row here and add its interview + template; a re-run of `/factory-onboard` will detect and offer it automatically.
 
@@ -44,7 +47,7 @@ Each row is one context file. A module is **required-by** one or more skills/age
 Find the repo root (`git rev-parse --show-toplevel`). If there's no `factory/`, create it (and a `factory/.gitignore` with `.state/` so agent watermarks don't get committed). Also create the run-log dirs modules expect: `intake/` (intake runs) and `syncs/` (sync agendas/recaps).
 
 ### 2. Scan and report a status matrix
-For each module in the registry, check whether `factory/<file>` exists. Present a compact matrix so the user sees the whole picture at a glance:
+For each module in the registry, check whether `factory/<file>` exists — for a directory-shaped module (`marketing/content-types/`), present when the directory exists and has at least an index plus one content-type file, not just when the empty directory exists. Present a compact matrix so the user sees the whole picture at a glance:
 
 ```
 factory/ status
@@ -65,6 +68,10 @@ Go module by module. For each, ask its questions in small batches (use the AskUs
 
 - For `intake.md`, `ownership.md`, `codebases.md`, `deployment.md`, `communication.md`: use the detailed question sets in the referenced onboarding docs / templates (don't duplicate them here — read and follow them).
 - For `priority.md` and `meetings.md`, use the inline question sets below.
+- **Exception — the `marketing/*.md` modules are not a batch-questions interview.** Invoke
+  `factory-marketing-onboard` and let it run its own hands-on flow (a short setup interview, then
+  building the user's first piece of content together, filing what it learns as it goes) — do not
+  attempt to fill these three files from questions asked here.
 
 **`priority.md` questions**
 - What are the **current priorities**, grouped by horizon — **today**, **this week**, **this month/now** (map to the tracker's T-levels where it helps)? Link to real issues/epics where they exist.
