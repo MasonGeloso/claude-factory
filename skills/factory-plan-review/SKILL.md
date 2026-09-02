@@ -1,0 +1,107 @@
+---
+name: factory-plan-review
+description: Independent, fresh-eyes review of one finished implementation plan — the pre-execution counterpart to `factory-code-review`. Reads the plan file, the originating task/issue it's for, and the project's own `factory/code-review.md` (reused verbatim — this module has no separate tool config), then checks the plan for missing requirements, doc/convention adherence, and pattern fit, and posts a PASS/FAIL verdict. Built to run two ways — invoked in-context via the Skill tool by Claude itself, or run cold by ANY CLI-based coding agent (e.g. Codex CLI's `codex exec`) that was only handed this file's absolute path and a plan file, with no prior conversation context. `factory-implement` runs this as a blocking gate after Plan + Re-research, before Execute writes any code. Use when the user says "factory plan review", "review this plan", "second opinion on the plan", or when `factory-implement` invokes it before Execute.
+user-invocable: true
+---
+
+# Factory — Plan Review (external / second-opinion)
+
+*A different set of eyes — sometimes literally a different model — on the plan itself, before a
+single line of implementation exists.*
+
+This skill is read two ways:
+1. **In-context (Claude, via the Skill tool).** You already have the conversation's context — the
+   task, the plan, the worktree. Skip straight to **Step 2**.
+2. **Cold, by an external CLI agent** (Codex CLI or similar) that was handed nothing but this file's
+   absolute path, a plan file path, and an issue reference. You have no prior context — do
+   **Step 1** first to bootstrap it yourself.
+
+> If you're an external agent reading this file directly: this is a plain markdown instruction file,
+> not a Claude Code skill invocation — just follow it as your task.
+
+---
+
+## Step 1 — Establish context (skip if you already have it)
+
+- Make sure you're working inside the repo the plan belongs to (the worktree it was built in, or a
+  fresh checkout/clone if you're starting cold — read-only is enough, you don't need to build
+  anything).
+- Find `factory/` at the repo root. **Read `factory/code-review.md` for the reviewer tool +
+  invocation.** This skill has **no separate tool configuration** — it always reuses whatever
+  `factory/code-review.md` names, pointed at this file instead. If `factory/code-review.md` doesn't
+  exist, or exists with `Enabled: no`, stop and say external plan review is unavailable — do not fall
+  back to some other tool or ask the user to configure one here; that config lives in exactly one
+  place.
+- Read `factory/plan-review.md` for this project's plan-specific checklist (separate from
+  code-review's checklist — a plan is reviewed for different things than a diff). If missing, run the
+  generic checks only and say so.
+- Read `factory/codebases.md`, `factory/deployment.md`, and `factory/intake.md` — the same docs
+  `factory-implement` Step 0 already loaded — so you can check the plan against real project
+  convention, not judge it in a vacuum. **`factory/intake.md` also gives you the tracker CLI**, needed
+  to pull the originating issue yourself since a cold agent has no prior context.
+- Identify the plan and issue from the prompt you were given: an absolute path to the plan markdown
+  file (usually in the worktree's `./tasks/` dir), and the originating issue id/url.
+
+## Step 2 — Read everything
+
+- The **full plan file**, verbatim.
+- The **originating issue**, using the tracker CLI from `intake.md` (e.g. `gh issue view <num>
+  --comments`), and **every comment**, start to finish — none skipped, none truncated, same rule as
+  the rest of Factory. The requirements the plan must satisfy live there, not just in the plan's own
+  restatement of them.
+- Skim the **relevant existing code** the plan says it will touch or extend — enough to judge whether
+  the plan reinvents something that already exists and whether it matches this codebase's actual
+  patterns. Not a full read of the codebase, just enough to check the plan's own claims about what's
+  there.
+
+## Step 3 — Review
+
+Score every category below against what you just read. PASS / WARN / FAIL each:
+
+1. **Completeness** — does the plan address every requirement in the issue, including every comment?
+   Anything the issue asks for that the plan is silent on?
+2. **Doc & convention adherence** — does the plan follow this project's own `factory/` docs (worktree
+   convention, provisioning, existing architecture notes) and the codebase's real patterns, rather
+   than inventing its own approach where an established one exists?
+3. **Reuse & simplification** — does the plan re-derive or re-implement something that already exists
+   (a util, a service, a pattern) instead of using it? Is it proposing more abstraction than the task
+   needs?
+4. **Risk & unknowns** — does the plan surface its own open questions/risks honestly, or does it paper
+   over a genuine unknown as if it were settled?
+5. **Project-specific checklist** — every bullet from `factory/plan-review.md`'s checklist, each
+   scored on its own line.
+
+## Output & posting
+
+Same table shape as `factory-code-review`:
+
+| Check | Status | Note |
+|-------|--------|------|
+| Completeness | ✅/⚠️/❌ | one-line TLDR |
+| Doc & convention adherence | ✅/⚠️/❌ | one-line TLDR |
+| Reuse & simplification | ✅/⚠️/❌ | one-line TLDR |
+| Risk & unknowns | ✅/⚠️/❌ | one-line TLDR |
+| *(project checklist item)* | ✅/⚠️/❌ | one-line TLDR |
+
+Then, on its own line, exactly one of:
+```
+VERDICT: PASS
+VERDICT: FAIL
+```
+FAIL if anything is ❌. Be ruthlessly concise below the table — no word salad:
+- ❌ **Fix:** which section of the plan — what's missing or wrong, what it should say instead.
+- ⚠️ **Heads up:** what looks off, why it's not blocking.
+
+Unlike `factory-code-review`, there is no PR to comment on — **the table + verdict are the final
+printed output.** A headless caller (`codex exec -o <path>`, etc.) captures only that and needs it to
+contain the full table and the `VERDICT:` line so it can be grepped without re-fetching anything; when
+run in-context, report it directly to the driver/user.
+
+## In a `factory-implement` run
+
+This is a **blocking gate**, not advisory — run once Plan **and** Re-research finish (however many
+rounds the task's E-level called for), before Execute writes any code. `VERDICT: FAIL` means revise
+the plan (back to `factory-plan`/`factory-reresearch`) and re-run this gate on the revised plan — do
+not proceed to Execute on a FAIL. Loop until `VERDICT: PASS` (or `factory/plan-review.md` says
+disabled/is missing, in which case this step is skipped entirely — `factory-reresearch` already
+covered in-context scrutiny of the plan).

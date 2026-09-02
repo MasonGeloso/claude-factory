@@ -32,6 +32,7 @@ These are already-installed **user skills**. The normal way to run one is the **
 |---|---|---|
 | Plan | `factory-plan` | `~/.claude/skills/factory-plan/SKILL.md` |
 | Re-research | `factory-reresearch` | `~/.claude/skills/factory-reresearch/SKILL.md` |
+| Plan review (optional, pre-Execute gate) | `factory-plan-review` | `~/.claude/skills/factory-plan-review/SKILL.md` — see the exception note below, invocation differs |
 | Execute (build the plan) | `factory-execute` | `~/.claude/skills/factory-execute/SKILL.md` |
 | Recheck | `factory-recheck` | `~/.claude/skills/factory-recheck/SKILL.md` |
 | Demo (web UI) | `factory-demo-video` | `~/.claude/skills/factory-demo-video/SKILL.md` |
@@ -42,7 +43,13 @@ The factory skills all live under `~/.claude/skills/<name>/` (some, like `factor
 
 If you ever can't invoke one of these by name, stop and tell the user the skill is missing — do not improvise the work inline or fabricate a substitute.
 
-**One exception: `factory-code-review`** (used in Handoff, Step 6) is invoked *differently* when `factory/code-review.md` configures an external tool — you shell out to that tool (e.g. `codex exec`) with a prompt pointing at `~/.claude/skills/factory-code-review/SKILL.md`'s **absolute path**, since an external CLI agent can't resolve a Claude Code skill name. If no external tool is configured (or `factory/code-review.md` doesn't exist), run `factory-code-review` yourself via the Skill tool instead — same review, just performed in-context.
+**Two exceptions: `factory-code-review`** (Handoff, Step 6) **and `factory-plan-review`** (Step 3,
+pre-Execute) are invoked *differently* when their respective config file names an external tool — you
+shell out to that tool (e.g. `codex exec`) with a prompt pointing at the relevant `SKILL.md`'s
+**absolute path** (a PR URL for code-review, the plan file's path plus the issue reference for
+plan-review), since an external CLI agent can't resolve a Claude Code skill name. If no external tool
+is configured (or the config file doesn't exist), run the skill yourself via the Skill tool instead —
+same review, just performed in-context.
 
 ---
 
@@ -72,6 +79,7 @@ The point of saying all this: take the stress off. Thoroughness is the job.
    - The **Handoff & status** section of `factory/intake.md` — where to post updates and what "ready for review" means.
 4. If any of those are **missing or incomplete**, run **`/factory-onboard`** — the single, partial-aware onboarding skill; it detects exactly which `factory/` files are missing (here: `codebases.md`, `deployment.md`, the handoff section of `intake.md`) and fills only those, using this skill's [onboarding.md](onboarding.md) as its reference. If `factory-onboard` isn't available, fall back to [onboarding.md](onboarding.md) directly. Then continue. Do not guess infrastructure or status conventions.
 5. Check for `factory/code-review.md` (optional — governs the Handoff review gate in Step 6). If it's missing, this run just treats external review as **disabled** and proceeds; no need to block on it or force onboarding. If the user wants it, offer to run `/factory-onboard` (it will pick up this one module using `factory-code-review/onboarding.md`) before Handoff, or onboard it later before the next run.
+6. Check for `factory/plan-review.md` (optional — governs the pre-Execute plan review gate in Step 3). If missing, this run treats it as disabled and proceeds. If the user wants it, note it requires `factory/code-review.md` to already be enabled (it reuses that invocation) — offer `/factory-onboard` (picks up this module via `factory-plan-review/onboarding.md`).
 
 ---
 
@@ -112,18 +120,22 @@ Per `factory/codebases.md` and the repo's provisioning doc (`factory/dev-manager
 
 ---
 
-## Step 3 — Pipeline: plan → re-research → execute → recheck
+## Step 3 — Pipeline: plan → re-research → plan review → execute → recheck
 
 **This skill is the driver. Each phase below is a separate skill, and you MUST run it by calling the Skill tool with that skill's name — do not do the work inline from memory.** Invoking the skill pulls in its full instructions; follow them, let it finish, then move to the next phase. Running the work yourself instead of invoking the skill is the main failure mode of the factory — do not do it.
 
-Set a todo list with these phases so progress is visible: Plan → Re-research → Execute → Recheck → Stand-up & verify → Demo → Handoff. Then run them in order. Loop backward freely — recheck (or live verification) can send you back to plan.
+Set a todo list with these phases so progress is visible: Plan → Re-research → Plan review → Execute → Recheck → Stand-up & verify → Demo → Handoff. Then run them in order. Loop backward freely — recheck (or live verification) can send you back to plan.
 
 1. **Plan** — call the Skill tool: `factory-plan`. (Research/diagnose, then write the plan to a markdown file in `./tasks` inside the worktree.) Do not write any production code in this phase.
 2. **Re-research** — call the Skill tool: `factory-reresearch`. Run it the number of rounds the E-level calls for (E3:1, E2:2, E1:3–4+).
-3. **Execute (build the plan)** — call the Skill tool: `factory-execute`. It takes the heavily-researched plan and builds it: granular todo list, one item at a time, verify as you go, don't stop until 100% done.
-4. **Recheck** — call the Skill tool: `factory-recheck`. If anything is wrong, fix it or go back to plan/re-research. Repeat until genuinely confident — not until you're tired.
+3. **Plan review** (optional, blocking gate — only if `factory/plan-review.md` exists with `Enabled: yes`) — run `factory-plan-review` against the plan file just produced/refined:
+   - If `factory/code-review.md` configures an external tool, shell out to it now with its documented invocation, prompt pointing at `factory-plan-review/SKILL.md`'s absolute path and this plan file's path plus the issue reference. Otherwise run `factory-plan-review` yourself via the Skill tool.
+   - Read the result's `VERDICT:` line. **`FAIL`** → revise the plan (back to `factory-plan`/`factory-reresearch`) and re-run this gate on the revised plan — do not proceed to Execute on a FAIL. **`PASS`** → continue.
+   - Loop here until `PASS` (or the module says disabled/is missing, in which case skip this step entirely — `factory-reresearch` already covered in-context scrutiny of the plan).
+4. **Execute (build the plan)** — call the Skill tool: `factory-execute`. It takes the heavily-researched plan and builds it: granular todo list, one item at a time, verify as you go, don't stop until 100% done.
+5. **Recheck** — call the Skill tool: `factory-recheck`. If anything is wrong, fix it or go back to plan/re-research. Repeat until genuinely confident — not until you're tired.
 
-Gate: do not proceed to Execute until Plan **and** Re-research have actually been run (the plan file exists). Do not proceed to Stand-up/Demo/Handoff until Recheck passes.
+Gate: do not proceed to Execute until Plan **and** Re-research have actually been run (the plan file exists) **and, if `factory/plan-review.md` enables it, the plan review gate has returned `PASS`**. Do not proceed to Stand-up/Demo/Handoff until Recheck passes.
 
 ---
 
@@ -177,6 +189,7 @@ This is a **mandatory phase, not an optional epilogue.** Once Recheck passes and
 Before you say "done" / "ready" / hand back to the user, every box must be checked. If any is unchecked, you are not done — go do it.
 
 - [ ] Plan + re-research written (plan file exists)
+- [ ] **External plan review gate is `PASS`** (if `factory/plan-review.md` enables it; skip if disabled/missing)
 - [ ] Built (factory-execute) and Recheck verdict is **PASS**
 - [ ] **Verified live on the running stack** (Step 4) — seen working with your own eyes, not just code-reviewed
 - [ ] Demo recorded **and verified** (you looked at it), or demo mode is `none`
