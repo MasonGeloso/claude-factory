@@ -55,7 +55,20 @@ guessing at values. Do not partially run with assumed defaults.
 4. Build the content per the content type's instructions.
 5. If the de-slop language is set, run `factory-humanizer` (in that language) on the draft before it
    goes anywhere near a platform.
-6. Publish per the content type's **autonomy mode**:
+6. **External content review gate** (only if `factory/content-review.md` exists with **Enabled:
+   yes**) — run `factory-content-review` against the finished piece, after de-slop and after every
+   factual check the content type's own file requires, before any composer opens. If the config
+   names an external tool, shell out to it with its documented invocation (prompt pointing at
+   `factory-content-review/SKILL.md`'s absolute path and the content packet). Otherwise run
+   `factory-content-review` yourself via the Skill tool.
+   - `VERDICT: SHIP` — proceed to publish.
+   - `VERDICT: FIX` — apply the fix, re-run this content type's own mechanical gates (de-slop, any
+     claim-sourcing check), and re-review only if the changes were substantial. Then proceed.
+   - `VERDICT: BLOCK` — do not publish this tick. Report it the same as any other `NOT_POSTED`
+     outcome (Step 5), with the reviewer's stated reason.
+   Skip this step entirely if `factory/content-review.md` doesn't exist or says `Enabled: no` — do
+   not block a project that hasn't opted in.
+7. Publish per the content type's **autonomy mode**:
    - `autonomous-publish` — this run has standing authorization to publish; do not draft-and-stop,
      do not ask for permission. A post left sitting in a draft/composer unpublished is a **failed**
      run, not a partial success — report it as such (see Step 5).
