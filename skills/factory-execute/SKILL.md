@@ -8,7 +8,7 @@ description: 'The /execute (build) step of the factory pipeline — take an ALRE
 This is the **build** step of the factory pipeline. You've already planned and heavily re-researched;
 now it's time to execute that plan into working code. It is **not** the entry point for a task — the
 [`factory-implement`](../factory-implement/SKILL.md) driver owns the full lifecycle (read comments →
-plan → re-research → **execute** → recheck → stand up + verify live → demo → handoff) and invokes this
+plan → re-research → **execute** → recheck → stand up + smoke → PR + code review → QA → demo → handoff) and invokes this
 step in the middle.
 
 ## STOP — precondition check (do this BEFORE anything else)

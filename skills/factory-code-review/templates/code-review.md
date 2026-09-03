@@ -1,8 +1,12 @@
 # Factory Code Review — <PROJECT NAME>
 
-> Config for the external/second-opinion review step `factory-implement` runs in Handoff, via the
-> `factory-code-review` skill. Filled during onboarding. Leave "Enabled: no" if this project doesn't
-> want an external review gate — `factory-recheck` alone still runs either way.
+> Config for the external/second-opinion review step `factory-implement` runs right after opening the
+> PR (before the QA gate and the demo), via the `factory-code-review` skill. Filled during onboarding.
+> Leave "Enabled: no" if this project doesn't want an external review gate — `factory-recheck` alone
+> still runs either way.
+>
+> The **Tool / Invocation** below is also reused by `factory-qa` for its second-opinion step and by
+> `factory-plan-review`, so those gates configure no tool of their own.
 
 ## External review
 - **Enabled:** <yes | no>
