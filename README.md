@@ -5,7 +5,7 @@ Factory is a suite of [Claude Code](https://claude.com/claude-code) skills that 
 It's two halves:
 
 - **Intake** — talk through everything you have to do; Factory parses it into well-formed issues, classifies each, dedupes against what already exists, and files them in your tracker (GitHub / GitLab / Jira / …).
-- **Execute** — point Factory at one issue; it sets up an isolated git worktree and runs a disciplined pipeline (diagnose → plan → re-research → implement → recheck → demo → handoff), keeping the issue updated the whole way.
+- **Execute** — point Factory at one issue; it sets up an isolated git worktree and runs a disciplined pipeline (diagnose → plan → re-research → implement → recheck → code review → **QA it like a real user** → demo → handoff), keeping the issue updated the whole way.
 
 Every project is different, so the rules aren't hard-coded. Each repo gets a `factory/` directory describing how *that* project tracks work, runs its stack, communicates, and hands off. One skill — `factory-onboard` — sets that directory up and back-fills it as new capabilities need new context. Factory reads it; if something's missing, it onboards it with you first.
 
@@ -26,7 +26,9 @@ flowchart TB
 
     subgraph deliver [Take work to done]
       IMPL["/factory-implement (driver)"]
-      IMPL --> PLAN["/factory-plan"] --> RR["/factory-reresearch"] --> EXE["/factory-execute"] --> RC["/factory-recheck"] --> DEMO["demo-video / demo-terminal"] --> REVIEW["/factory-code-review\n(optional PR gate)"]
+      IMPL --> PLAN["/factory-plan"] --> PR1["/factory-plan-review\n(optional gate)"] --> EXE["/factory-execute"] --> RC["/factory-recheck"] --> REVIEW["/factory-code-review\n(optional PR gate)"] --> QA["/factory-qa\n(required gate)"] --> DEMO["demo-video / demo-terminal"]
+      PLAN --> RR["/factory-reresearch"] --> PR1
+      QA -.->|FAIL| EXE
     end
 
     subgraph sync [Alignment loop]
@@ -127,7 +129,9 @@ In any repo:
 | `factory-reresearch` | Attack the plan, find holes, fix them in place |
 | `factory-implement` | Granular todo list, build, verify — don't stop until done |
 | `factory-recheck` | Fresh-eyes review → PASS/FAIL verdict |
-| `factory-code-review` | Optional second-opinion review of the opened PR — runnable by an external CLI agent (e.g. Codex) or in-context; blocking Handoff gate |
+| `factory-plan-review` | Optional second-opinion review of the *plan*, before any code is written; blocking pre-Execute gate |
+| `factory-code-review` | Optional second-opinion review of the opened PR — runnable by an external CLI agent (e.g. Codex) or in-context; blocking gate right after the PR opens |
+| `factory-qa` | **Required** gate: actually use the feature on the running stack — real user scenarios, desktop + mobile, paper-cuts and polish, real prompts/output over 3–5 examples — then post a QA report with screenshots and get an external second opinion |
 | `factory-demo-video` | Record a browser screencast of the change (web UI) |
 | `factory-demo-terminal` | Record a terminal screencast (CLI / stdout) |
 | `factory-schedule-sync` | Build a high-leverage sync agenda from the backlog + attendees + priorities |

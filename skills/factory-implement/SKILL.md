@@ -1,6 +1,6 @@
 ---
 name: factory-implement
-description: The factory ENTRY POINT / driver. Pick up a single task from the tracker (by id/url, or an intake item) and drive it end-to-end to ready-for-review — autonomously, with L7-engineer rigor. Reads every comment, then runs the pipeline (plan → re-research → execute(build) → recheck → stand up infra + verify live + iterate → demo → handoff), adjusting autonomy and iteration depth by the task's E-level. Reads all per-project rules from the working repo's `factory/` directory (worktrees, provisioning, demo, handoff) and onboards any missing config. Use when the user says "factory implement", "pick up this task", "execute this issue", "build this issue", or points at a tracker issue to take to done.
+description: The factory ENTRY POINT / driver. Pick up a single task from the tracker (by id/url, or an intake item) and drive it end-to-end to ready-for-review — autonomously, with L7-engineer rigor. Reads every comment, then runs the pipeline (plan → re-research → execute(build) → recheck → stand up infra + verify live → PR + code review → QA it like a real user → demo → handoff), adjusting autonomy and iteration depth by the task's E-level. Reads all per-project rules from the working repo's `factory/` directory (worktrees, provisioning, demo, handoff) and onboards any missing config. Use when the user says "factory implement", "pick up this task", "execute this issue", "build this issue", or points at a tracker issue to take to done.
 ---
 
 # Factory — Implement (the driver / entry point)
@@ -35,21 +35,26 @@ These are already-installed **user skills**. The normal way to run one is the **
 | Plan review (optional, pre-Execute gate) | `factory-plan-review` | `~/.claude/skills/factory-plan-review/SKILL.md` — see the exception note below, invocation differs |
 | Execute (build the plan) | `factory-execute` | `~/.claude/skills/factory-execute/SKILL.md` |
 | Recheck | `factory-recheck` | `~/.claude/skills/factory-recheck/SKILL.md` |
+| Code review (optional, post-PR gate) | `factory-code-review` | `~/.claude/skills/factory-code-review/SKILL.md` — see the exception note below, invocation differs |
+| **QA (always on, blocking)** | `factory-qa` | `~/.claude/skills/factory-qa/SKILL.md` — its Step 6 second opinion also shells out, see the note below |
 | Demo (web UI) | `factory-demo-video` | `~/.claude/skills/factory-demo-video/SKILL.md` |
 | Demo (CLI) | `factory-demo-terminal` | `~/.claude/skills/factory-demo-terminal/SKILL.md` |
-| Code review (optional, Handoff gate) | `factory-code-review` | `~/.claude/skills/factory-code-review/SKILL.md` — see the exception note below, invocation differs |
 
 The factory skills all live under `~/.claude/skills/<name>/` (some, like `factory-demo-terminal`, have an `assets/` or `references/` subdir alongside `SKILL.md`). The suite is self-contained — every skill it calls is a `factory-*` skill. (The web-UI demo still relies on the external `playwright-cli` skill/tool for browser automation; that's a tool dependency, not part of the factory pipeline.)
 
 If you ever can't invoke one of these by name, stop and tell the user the skill is missing — do not improvise the work inline or fabricate a substitute.
 
-**Two exceptions: `factory-code-review`** (Handoff, Step 6) **and `factory-plan-review`** (Step 3,
-pre-Execute) are invoked *differently* when their respective config file names an external tool — you
-shell out to that tool (e.g. `codex exec`) with a prompt pointing at the relevant `SKILL.md`'s
-**absolute path** (a PR URL for code-review, the plan file's path plus the issue reference for
-plan-review), since an external CLI agent can't resolve a Claude Code skill name. If no external tool
-is configured (or the config file doesn't exist), run the skill yourself via the Skill tool instead —
-same review, just performed in-context.
+**Three exceptions** — the external-review steps. **`factory-plan-review`** (Step 3, pre-Execute),
+**`factory-code-review`** (Step 5, post-PR) and **`factory-qa`'s Step 6 second opinion** (Step 6) are
+invoked *differently* when the config names an external tool — you shell out to that tool (e.g.
+`codex exec`) with a prompt pointing at the relevant `SKILL.md`'s **absolute path** (the plan file's
+path plus the issue reference for plan-review; a PR URL for code-review; the PR + issue + the QA report
+for the QA second opinion), since an external CLI agent can't resolve a Claude Code skill name. If no
+external tool is configured (or the config file doesn't exist), run that review yourself in-context
+instead — same review, just performed by you.
+
+Note the split: **`factory-qa` itself always runs in-context** (it has to drive a real browser and a
+real stack); only its *final second-opinion step* shells out.
 
 ---
 
@@ -78,7 +83,7 @@ The point of saying all this: take the stress off. Thoroughness is the job.
    - `factory/deployment.md` — worktree base dir, how to run/demo the stack, and the demo mode. **Also check for `factory/dev-manager.md`** — if the repo has one, it is the canonical provisioning guide (worktrees, env copy, boot/pause/teardown) and overrides the manual instructions in `deployment.md`.
    - The **Handoff & status** section of `factory/intake.md` — where to post updates and what "ready for review" means.
 4. If any of those are **missing or incomplete**, run **`/factory-onboard`** — the single, partial-aware onboarding skill; it detects exactly which `factory/` files are missing (here: `codebases.md`, `deployment.md`, the handoff section of `intake.md`) and fills only those, using this skill's [onboarding.md](onboarding.md) as its reference. If `factory-onboard` isn't available, fall back to [onboarding.md](onboarding.md) directly. Then continue. Do not guess infrastructure or status conventions.
-5. Check for `factory/code-review.md` (optional — governs the Handoff review gate in Step 6). If it's missing, this run just treats external review as **disabled** and proceeds; no need to block on it or force onboarding. If the user wants it, offer to run `/factory-onboard` (it will pick up this one module using `factory-code-review/onboarding.md`) before Handoff, or onboard it later before the next run.
+5. Check for `factory/code-review.md` (optional — governs the code review gate in Step 5, **and supplies the external tool `factory-qa` reuses for its Step 6 second opinion**). If it's missing, this run just treats external review as **disabled** and proceeds; no need to block on it or force onboarding. If the user wants it, offer to run `/factory-onboard` (it will pick up this one module using `factory-code-review/onboarding.md`) before the Step 5 review gate, or onboard it later before the next run.
 6. Check for `factory/plan-review.md` (optional — governs the pre-Execute plan review gate in Step 3). If missing, this run treats it as disabled and proceeds. If the user wants it, note it requires `factory/code-review.md` to already be enabled (it reuses that invocation) — offer `/factory-onboard` (picks up this module via `factory-plan-review/onboarding.md`).
 
 ---
@@ -124,7 +129,7 @@ Per `factory/codebases.md` and the repo's provisioning doc (`factory/dev-manager
 
 **This skill is the driver. Each phase below is a separate skill, and you MUST run it by calling the Skill tool with that skill's name — do not do the work inline from memory.** Invoking the skill pulls in its full instructions; follow them, let it finish, then move to the next phase. Running the work yourself instead of invoking the skill is the main failure mode of the factory — do not do it.
 
-Set a todo list with these phases so progress is visible: Plan → Re-research → Plan review → Execute → Recheck → Stand-up & verify → Demo → Handoff. Then run them in order. Loop backward freely — recheck (or live verification) can send you back to plan.
+Set a todo list with these phases so progress is visible: Plan → Re-research → Plan review → Execute → Recheck → Stand-up & verify → PR + code review → **QA** → Demo → Handoff. Then run them in order. Loop backward freely — recheck (or live verification) can send you back to plan.
 
 1. **Plan** — call the Skill tool: `factory-plan`. (Research/diagnose, then write the plan to a markdown file in `./tasks` inside the worktree.) Do not write any production code in this phase.
 2. **Re-research** — call the Skill tool: `factory-reresearch`. Run it the number of rounds the E-level calls for (E3:1, E2:2, E1:3–4+).
@@ -135,54 +140,116 @@ Set a todo list with these phases so progress is visible: Plan → Re-research �
 4. **Execute (build the plan)** — call the Skill tool: `factory-execute`. It takes the heavily-researched plan and builds it: granular todo list, one item at a time, verify as you go, don't stop until 100% done.
 5. **Recheck** — call the Skill tool: `factory-recheck`. If anything is wrong, fix it or go back to plan/re-research. Repeat until genuinely confident — not until you're tired.
 
-Gate: do not proceed to Execute until Plan **and** Re-research have actually been run (the plan file exists) **and, if `factory/plan-review.md` enables it, the plan review gate has returned `PASS`**. Do not proceed to Stand-up/Demo/Handoff until Recheck passes.
+Gate: do not proceed to Execute until Plan **and** Re-research have actually been run (the plan file exists) **and, if `factory/plan-review.md` enables it, the plan review gate has returned `PASS`**. Do not proceed to Stand-up until Recheck passes. **Do not proceed to the Demo until the QA gate (Step 6) has returned `PASS`** — that one has no opt-out.
 
 ---
 
-## Step 4 — Stand up the stack and verify live (iterate until it actually works)
+## Step 4 — Stand up the stack and smoke-verify
 
-Recheck is a read-only review; **now bring up the stack and run the change against it** to confirm it
-genuinely works end to end. Provision the stack **exactly as the repo's `factory/` docs say**
-(`factory/dev-manager.md` if present — use its provisioning tool/CLI and only the **minimal** services
-the task needs; else `factory/deployment.md`). Adding seed data your feature needs is fine if the docs
-allow it.
+Recheck is a read-only review; **now bring up the stack and confirm the change is actually running.**
+Provision the stack **exactly as the repo's `factory/` docs say** (`factory/dev-manager.md` if present —
+use its provisioning tool/CLI and only the **minimal** services the task needs; else
+`factory/deployment.md`). Adding seed data your feature needs is fine if the docs allow it.
 
-Then exercise the feature the way the demo will — through the real running app — and **iterate**:
-change → apply it the way the docs say (reload/rebuild) → re-check. **Stay in this loop until the
-feature fully works and every paper-cut is gone.** If something is fundamentally wrong, it is never too
-late to go back to Plan/Re-research — reaching this step is not permission to ship something
-half-working. Only move on once you've seen it work with your own eyes on the running stack.
+This step is the **smoke test**, not the QA pass: the stack boots, the app serves, the main path of the
+new feature responds, and the running build genuinely contains your change. If it doesn't even come up
+or the happy path is broken, fix that here — change → apply it the way the docs say (reload/rebuild) →
+re-check — before going further.
+
+The deep pass (real user scenarios, both viewports, polish, output quality) is **Step 6 — QA**. Don't
+try to do it here, and don't treat "it booted" as evidence the feature is any good.
 
 ---
 
-## Step 5 — Demo (per the repo's `factory/` demo config)
+## Step 5 — Commit, open the PR, and run the code review gate
 
-Record against **the stack you just stood up** — use whatever URLs/ports the repo's provisioning docs
-(or the provisioning tool's own output) report, not a hardcoded address. Default: **always film a
-demo** unless the task explicitly says not to. Call the Skill tool for the configured demo mode:
+The review gates need a PR to review, so the PR is opened here — **before** QA and the demo — not at the
+end of the run.
+
+1. Commit in the worktree (on the task branch). Push if the project's handoff style is auto-push (skip
+   only if it's explicitly "wait for the user to push").
+2. Open a **pull request** from the task branch if that's the project's handoff style (per `intake.md` /
+   the provisioning doc), and link it on the issue.
+3. **External code review gate** (only if `factory/code-review.md` exists with **Enabled: yes**) — run
+   `factory-code-review` against the PR you just opened:
+   - If `code-review.md` configures an external tool, shell out to it now with its documented invocation
+     (prompt pointing at `~/.claude/skills/factory-code-review/SKILL.md`'s absolute path and this PR's
+     URL). Otherwise, run `factory-code-review` yourself via the Skill tool.
+   - Read the result for its `VERDICT:` line. **`FAIL`** → go back to `factory-plan`/`factory-execute`,
+     fix it, re-push, and re-run this gate — do not proceed past it on a FAIL. **`PASS`** → continue.
+   - Loop here until `PASS` (or the module says disabled/is missing, in which case skip this step
+     entirely — `factory-recheck` already covered the in-context review).
+
+> Remember what this gate can and cannot do: it read the **diff**. It never ran the app, never looked at
+> the UI, and cannot tell you whether the result is any good. That's the next step, and it is the reason
+> the next step exists.
+
+---
+
+## Step 6 — QA: actually use the feature yourself (mandatory blocking gate)
+
+**Call the Skill tool: `factory-qa`.** This is **not optional and has no config switch** — every run goes
+through it, at every E-level. (E3 means "don't ask the user questions", not "don't check your work".)
+
+It runs an iterative loop on the stack you just stood up: write the list of things a real user would
+actually do → walk every one of them in a real browser (`claude-in-chrome`, falling back to
+`playwright-cli`) or against the real CLI/API → judge **functionality**, **intent** (does it do what the
+issue actually asked?), **hidden assumptions/shortcuts you took**, and **UI/UX paper-cuts and design
+polish on both desktop and mobile** → fix → re-push → re-walk. For LLM/data pipelines it inspects the
+**real rendered prompts, the context sent, and output quality across 3–5 examples, never one**. It then
+posts a **QA report with screenshots** to the issue and gets an **external second opinion** ("read the
+issue, get caught up, what did we miss? what paper-cuts are still there?").
+
+Your obligations as the driver:
+
+- **Do not skip it, do not do it inline from memory, and do not accept a QA report that is clearly
+  thin** (a report with no screenshots, or one that never mentions actually opening the UI, is not a QA
+  pass — send it back).
+- Read the `VERDICT:` line. **`FAIL`** → stay in the loop: fix, re-push, re-QA. If the problem is
+  structural, go all the way back to `factory-plan`/`factory-execute`. **`PASS`** → continue to the demo.
+- **If QA pushed any commits, the code review from Step 5 is now looking at stale code — re-run the
+  Step 5 code review gate once** before moving on.
+- Anything QA surfaces as an **assumption** gets posted on the issue and @-mentioned to the owner (the
+  standing rule below; this is the step that most often triggers it).
+
+> This gate exists because reading code is not the same as using a product. A run that reaches handoff
+> having never opened the thing it built is a failed run, no matter how clean the diff was.
+
+---
+
+## Step 7 — Demo (per the repo's `factory/` demo config)
+
+Record against **the stack you just QA'd** — use whatever URLs/ports the repo's provisioning docs (or
+the provisioning tool's own output) report, not a hardcoded address. Default: **always film a demo**
+unless the task explicitly says not to. Call the Skill tool for the configured demo mode:
 - **`video`** → call the Skill tool: `factory-demo-video` (web UI). Output into the worktree's demo dir.
 - **`terminal`** → call the Skill tool: `factory-demo-terminal` (CLI / stdout).
 - **`none`** → skip (e.g. a service with no local dev env): finish the code in the worktree and report ready for handoff so the user can push to the remote environment.
 
-Pull the demo's story from the task itself; don't re-interview the user. If recording the demo surfaces something off, **go back and fix it** — the demo is a real check, not a formality.
+**Build the demo out of the QA scenarios.** You just walked the list of what a real user does and you
+know exactly which states are interesting — show those, not a hand-wave over the happy path. A
+**thorough, longer demo is preferred** over a short one that skips the real behavior; length is not a
+problem here. Pull the story from the task itself plus the QA run; don't re-interview the user. If
+recording the demo surfaces something off, **go back and fix it** — the demo is a real check, not a
+formality.
 
 ---
 
-## Step 6 — Handoff (per the Handoff & status config in `intake.md`)
+## Step 8 — Handoff (per the Handoff & status config in `intake.md`)
 
-This is a **mandatory phase, not an optional epilogue.** Once Recheck passes and the change is verified live, you MUST do all of it — and verify each action actually took effect (re-read the issue / re-query the status; don't assume the command worked):
+This is a **mandatory phase, not an optional epilogue.** The PR already exists and both gates have
+passed; now close the loop. You MUST do all of it — and verify each action actually took effect (re-read
+the issue / re-query the status; don't assume the command worked):
 
-1. Commit in the worktree (on the task branch). Push if the project's handoff style is auto-push (skip only if it's explicitly "wait for the user to push").
-2. Open a **pull request** from the task branch if that's the project's handoff style (per `intake.md` / the provisioning doc), and link it on the issue.
-3. **External code review gate** (only if `factory/code-review.md` exists with **Enabled: yes**) — run `factory-code-review` against the PR you just opened:
-   - If `code-review.md` configures an external tool, shell out to it now with its documented invocation (prompt pointing at `~/.claude/skills/factory-code-review/SKILL.md`'s absolute path and this PR's URL). Otherwise, run `factory-code-review` yourself via the Skill tool.
-   - Read the result for its `VERDICT:` line. **`FAIL`** → go back to `factory-plan`/`factory-execute`, fix it, re-push, and re-run this gate — do not proceed past it on a FAIL. **`PASS`** → continue.
-   - Loop here until `PASS` (or the module says disabled/is missing, in which case skip this step entirely — `factory-recheck` already covered the in-context review).
-4. Move the tracker status to the configured **ready-for-review** state — then confirm it actually changed.
-5. **Post the demo as a comment** on the issue ("here's it working"), per the project's handoff config (the config says exactly how — link/attach). If demo mode is `none`, say so instead. **Do not end the run without doing this.**
-6. **Post the re-provision one-liner** (if the provisioning doc documents one) so the owner can spin the exact stack back up and poke at it themselves — the demo video is not the only review.
-7. Post a **concise log** comment: key decisions, assumptions made, open questions.
-8. **End the run by leaving the stack the way the repo's `factory/` docs say to** — if they document a non-destructive pause, use it (free the box's resources while keeping containers, data, and the worktree intact so the owner can resume in seconds). **Do not tear the stack down, delete the worktree, or remove any data volume at handoff** — that cleanup happens only after the owner has reviewed and said so. If the docs don't document a pause, leave a clear note of what is left running.
+1. Make sure everything is committed and pushed to the task branch (QA fixes included) and the PR is
+   up to date.
+2. Move the tracker status to the configured **ready-for-review** state — then confirm it actually changed.
+3. **Post the demo as a comment** on the issue ("here's it working"), per the project's handoff config (the config says exactly how — link/attach). If demo mode is `none`, say so instead. **Do not end the run without doing this.**
+4. Confirm the **QA report comment** (with its screenshots/artifacts) is on the issue — `factory-qa`
+   posts it, but it is part of the handoff package, so verify it's actually there.
+5. **Post the re-provision one-liner** (if the provisioning doc documents one) so the owner can spin the exact stack back up and poke at it themselves — the demo video is not the only review.
+6. Post a **concise log** comment: key decisions, assumptions made, open questions.
+7. **End the run by leaving the stack the way the repo's `factory/` docs say to** — if they document a non-destructive pause, use it (free the box's resources while keeping containers, data, and the worktree intact so the owner can resume in seconds). **Do not tear the stack down, delete the worktree, or remove any data volume at handoff** — that cleanup happens only after the owner has reviewed and said so. If the docs don't document a pause, leave a clear note of what is left running.
 
 ## Definition of done — DO NOT report the task finished until ALL are true
 
@@ -191,17 +258,21 @@ Before you say "done" / "ready" / hand back to the user, every box must be check
 - [ ] Plan + re-research written (plan file exists)
 - [ ] **External plan review gate is `PASS`** (if `factory/plan-review.md` enables it; skip if disabled/missing)
 - [ ] Built (factory-execute) and Recheck verdict is **PASS**
-- [ ] **Verified live on the running stack** (Step 4) — seen working with your own eyes, not just code-reviewed
-- [ ] Demo recorded **and verified** (you looked at it), or demo mode is `none`
+- [ ] Stack stood up and **smoke-verified** (Step 4) — it boots and the new path responds
 - [ ] PR opened (if that's the project's handoff style)
-- [ ] External code review gate is `PASS` (if `factory/code-review.md` enables it; skip if disabled/missing)
+- [ ] External code review gate is `PASS` (if `factory/code-review.md` enables it; skip if disabled/missing) — **re-run if QA pushed commits after it**
+- [ ] **`factory-qa` verdict is `PASS`** (Step 6) — ALWAYS required, no config opt-out, no E-level exemption
+- [ ] **You personally used the feature** — opened the UI and looked at it on desktop *and* mobile, or ran the pipeline on 3–5 real examples and read the actual prompts and output
+- [ ] **QA report posted on the issue, with screenshots** (or output samples for backend work)
+- [ ] **QA's external second opinion returned `PASS`** and anything it raised is fixed or answered
+- [ ] Demo recorded **and verified** (you looked at it) and built from the QA scenarios, or demo mode is `none`
 - [ ] Tracker status moved to ready-for-review (confirmed)
 - [ ] Demo posted as an issue comment (or stated `none`)
 - [ ] Re-provision one-liner posted (if the provisioning doc documents one)
 - [ ] Running-log comment posted (decisions / assumptions / questions)
 - [ ] Stack left per the repo's docs (**paused, not destroyed**); worktree + data volumes intact for review
 
-If you catch yourself about to wrap up with any of these missing, stop and finish them first. "I built the code" is **not** the finish line — the handoff is.
+If you catch yourself about to wrap up with any of these missing, stop and finish them first. "I built the code" is **not** the finish line — the handoff is. And **"the code review passed" is not evidence the feature works** — only Step 6 is.
 
 ---
 
@@ -221,4 +292,10 @@ Also log, as they happen: material **decisions** (and why), and any **questions 
 - Work in the worktree, never the user's primary checkout. Base off the configured HEAD.
 - Assign / @-mention only people listed in `ownership.md`.
 - Don't fabricate demo output; don't stand up redundant infra you could piggyback on; don't invent tooling the config doesn't document.
+- **Never report a task done without having used it yourself.** No "it should work", no inferring from
+  the source that the UI must render correctly, no treating the demo recording as the first time you
+  look at the feature. If it has a UI you have seen it, on both viewports; if it's a pipeline you have
+  read the real prompts and the real output on several examples. Skipping this is the single worst
+  failure mode of this system — it hands unreviewed, often visibly broken work to the user and wastes
+  their time re-QAing what you were supposed to check.
 - **Codebase-agnostic:** read worktree / provisioning / demo / handoff conventions from the working repo's `factory/` docs — never hardcode them here.

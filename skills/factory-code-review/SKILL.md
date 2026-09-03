@@ -1,6 +1,6 @@
 ---
 name: factory-code-review
-description: Independent, fresh-eyes review of one pull/merge request — reads the full diff, the linked issue, and the project's own checklist (`factory/code-review.md`), scores generic engineering categories (correctness, security, duplication/simplification, conventions, test coverage, docs), then posts a PASS/WARN/FAIL table and a VERDICT as a comment on the PR. Built to run two ways — invoked in-context via the Skill tool by Claude itself, or run cold by ANY CLI-based coding agent (e.g. Codex CLI's `codex exec`) that was only handed this file's absolute path and a PR link, with no prior conversation context. `factory-implement`'s Handoff step runs this (often via an external tool) as a blocking gate after opening a PR. Use when the user says "factory code review", "review this PR", "second opinion review", or when `factory-implement` invokes it against a freshly opened PR.
+description: Independent, fresh-eyes review of one pull/merge request — reads the full diff, the linked issue, and the project's own checklist (`factory/code-review.md`), scores generic engineering categories (correctness, security, duplication/simplification, conventions, test coverage, docs), then posts a PASS/WARN/FAIL table and a VERDICT as a comment on the PR. Built to run two ways — invoked in-context via the Skill tool by Claude itself, or run cold by ANY CLI-based coding agent (e.g. Codex CLI's `codex exec`) that was only handed this file's absolute path and a PR link, with no prior conversation context. `factory-implement` runs this (often via an external tool) as a blocking gate right after opening the PR — before the `factory-qa` gate and the demo. Use when the user says "factory code review", "review this PR", "second opinion review", or when `factory-implement` invokes it against a freshly opened PR.
 ---
 
 # Factory — Code Review (external / second-opinion)
@@ -68,4 +68,14 @@ Post this exact table + verdict as a **single comment on the PR** via the tracke
 
 ## In a `factory-implement` run
 
-This is a **blocking gate**, not advisory — run once the PR exists, before the tracker status moves to ready-for-review. `VERDICT: FAIL` sends the run back to `factory-plan`/`factory-execute` for fixes; once re-pushed, re-run this step. Loop until `VERDICT: PASS` (or `factory/code-review.md` says external review is disabled for this repo).
+This is a **blocking gate**, not advisory — run once the PR exists (Step 5 of the driver), **before the
+`factory-qa` gate and the demo**, and well before the tracker status moves to ready-for-review.
+`VERDICT: FAIL` sends the run back to `factory-plan`/`factory-execute` for fixes; once re-pushed, re-run
+this step. Loop until `VERDICT: PASS` (or `factory/code-review.md` says external review is disabled for
+this repo).
+
+**What this review cannot do:** it only reads the diff — it never runs the app, never opens the UI, and
+so cannot judge whether the result is actually good, complete, or polished. That is
+[`factory-qa`](../factory-qa/SKILL.md)'s job, which runs immediately after this and is not optional. A
+`PASS` here is not evidence the feature works. If QA later pushes fixes, this gate gets re-run against
+the updated PR.
