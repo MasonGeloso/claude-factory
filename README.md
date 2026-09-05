@@ -134,6 +134,7 @@ In any repo:
 | `factory-qa` | **Required** gate: actually use the feature on the running stack — real user scenarios, desktop + mobile, paper-cuts and polish, real prompts/output over 3–5 examples — then post a QA report with screenshots and get an external second opinion |
 | `factory-demo-video` | Record a browser screencast of the change (web UI) |
 | `factory-demo-terminal` | Record a terminal screencast (CLI / stdout) |
+| `factory-terminal-demo-video` | Narrated, subtitled video of a **real interactive** CLI/agent session, replayed inside a CSS "OS" window |
 | `factory-schedule-sync` | Build a high-leverage sync agenda from the backlog + attendees + priorities |
 | `factory-sync-recap` | Meeting transcript → issue updates, decisions, and a refreshed `priority.md` |
 | `factory-weekly-report` | Weekly tech-tree board as a shareable image: what shipped, what's in flight, what's blocked behind what |
@@ -183,6 +184,7 @@ A project can opt out and use a simpler scheme; its `factory/intake.md` declares
 - Claude Code.
 - Your tracker's CLI (`gh`, `glab`, `jira`, …) — whatever your `factory/intake.md` declares.
 - For demos: `factory-demo-video` drives a browser via the `playwright-cli` skill; `factory-demo-terminal` needs Python `playwright` (`pip install playwright && playwright install chromium`) + `ffmpeg`.
+- `factory-terminal-demo-video` additionally needs `pexpect` and, if you want narration, a TTS provider; it ships no icon set (licence decision — see its `chrome/README.md`).
 
 ## License
 

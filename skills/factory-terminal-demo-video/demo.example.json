@@ -1,0 +1,36 @@
+{
+  "command": "claude",
+  "args": ["--dangerously-skip-permissions", "--strict-mcp-config", "--mcp-config", "mcp.json"],
+  "cwd": "demo",
+  "env_unset_prefixes": ["CLAUDE_CODE_", "CLAUDECODE"],
+  "cols": 92,
+  "rows": 30,
+  "prompt_file": "demo/prompt.txt",
+  "ready_when": {
+    "markers": ["for shortcuts", "? for"],
+    "blocked_on": ["trust this folder", "No, exit"],
+    "timeout_s": 45
+  },
+  "done_when": { "file": "demo/audit.md", "min_bytes": 1500, "stable_polls": 4 },
+  "settle_s": 30,
+  "timeout_s": 780,
+
+  "segments": [[0, 12, 3], [12, 30, 20], [30, 300, 12], [300, 340, 1]],
+  "dwells": [[31.0, 8.0], [338.0, 6.0]],
+
+  "page": "chrome/macos.html",
+  "port": 8791,
+  "width": 2560,
+  "height": 1440,
+  "end_hold_s": 9.5,
+
+  "voice": {
+    "script": "vo.txt",
+    "display_script": "vo-display.txt",
+    "audio_dir": "audio",
+    "anchors": [1.0, 4.6, 11.2, 15.4, 20.4, 27.2, 37.4, 42.0, 49.6]
+  },
+  "subtitles": true,
+  "sub_lang": "ja",
+  "out_basename": "out/my-demo"
+}

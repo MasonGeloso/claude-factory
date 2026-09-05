@@ -1,0 +1,216 @@
+<!doctype html><html><head><meta charset="utf-8"><title>terminal demo</title>
+<link rel="stylesheet" href="node_modules/asciinema-player/dist/bundle/asciinema-player.css">
+<style>
+@font-face{font-family:'UI';src:url('fonts/Inter-1.ttf');font-weight:400}
+@font-face{font-family:'UI';src:url('fonts/Inter-2.ttf');font-weight:500}
+@font-face{font-family:'UI';src:url('fonts/Inter-3.ttf');font-weight:600}
+@font-face{font-family:'JBMono';src:url('fonts/JetBrainsMono-Regular.ttf');font-weight:400}
+@font-face{font-family:'JBMono';src:url('fonts/JetBrainsMono-Bold.ttf');font-weight:700}
+*{margin:0;padding:0;box-sizing:border-box}
+html{--sq:url(#squircle)}
+html,body{width:2560px;height:1440px;overflow:hidden;background:#07070f}
+body.nochrome .chrome{display:none!important}
+
+/* ---------- wallpaper: broad soft colour fields, the way macOS ships them ---------- */
+#desk{position:absolute;inset:0;overflow:hidden;background:#0d0a1c}
+/* Sequoia-ish: a few very wide, very soft colour fields on a deep base. Conic + radial
+   layers keep the falloff smooth so there is no visible banding at 1440p. */
+#desk::before{content:'';position:absolute;inset:-18%;
+  background:
+   radial-gradient(46% 38% at 16% 10%,  rgba(255,176,120,.92) 0%, transparent 68%),
+   radial-gradient(52% 44% at 74% 4%,   rgba(214,116,222,.90) 0%, transparent 70%),
+   radial-gradient(58% 50% at 96% 34%,  rgba(126, 82,236,.92) 0%, transparent 72%),
+   radial-gradient(64% 54% at 30% 52%,  rgba( 62, 96,232,.90) 0%, transparent 72%),
+   radial-gradient(70% 58% at 88% 84%,  rgba( 34,176,214,.88) 0%, transparent 72%),
+   radial-gradient(66% 56% at 18% 96%,  rgba( 96, 54,196,.90) 0%, transparent 72%),
+   radial-gradient(48% 40% at 52% 74%,  rgba(150, 70,200,.55) 0%, transparent 70%);
+  filter:blur(42px) saturate(118%)}
+#desk::after{content:'';position:absolute;inset:0;
+  background:radial-gradient(118% 102% at 50% 42%,transparent 40%,rgba(6,5,18,.58) 100%);}
+
+/* ---------- menu bar ---------- */
+#menubar{position:absolute;top:0;left:0;right:0;height:37px;z-index:3;
+  display:flex;align-items:center;gap:28px;padding:0 32px;
+  font:500 17px/1 'UI','Noto Sans CJK JP','Hiragino Sans',-apple-system,sans-serif;color:rgba(255,255,255,.93);
+  background:rgba(22,20,32,.34);backdrop-filter:blur(26px) saturate(150%);
+  -webkit-backdrop-filter:blur(26px) saturate(150%);
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.07)}
+#menubar .apple{width:17px;height:20px;margin-right:4px;opacity:.95;
+  background:#fff;-webkit-mask:var(--apple) center/contain no-repeat;mask:var(--apple) center/contain no-repeat}
+#menubar b{font-weight:600}
+#menubar .sp{margin-left:auto;display:flex;align-items:center;gap:22px;font-weight:400}
+#menubar svg{display:block}
+
+/* ---------- window ---------- */
+@keyframes winIn{
+  0%  {opacity:0;transform:translate(-50%,-47.5%) scale(.955)}
+  60% {opacity:1}
+  100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+#win{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  animation:winIn .66s cubic-bezier(.19,.9,.22,1) both;animation-play-state:paused;
+  width:max-content;border-radius:12px;overflow:hidden;z-index:2;
+  box-shadow:
+    0 0 0 .5px rgba(0,0,0,.55),
+    0 0 0 1.5px rgba(255,255,255,.09),
+    0 2px 6px rgba(0,0,0,.30),
+    0 14px 34px rgba(0,0,0,.34),
+    0 46px 110px rgba(0,0,0,.60);}
+#bar{height:52px;display:flex;align-items:center;position:relative;padding:0 20px;
+  background:linear-gradient(180deg,rgba(58,55,70,.62),rgba(40,38,50,.58));
+  backdrop-filter:blur(44px) saturate(180%);
+  -webkit-backdrop-filter:blur(44px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10), inset 0 -1px 0 rgba(0,0,0,.40)}
+#bar .lights{display:flex;gap:8px}
+#bar .l{width:13px;height:13px;border-radius:50%}
+.l.r{background:radial-gradient(circle at 34% 28%,#ff8a80,#ec5f55 62%);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.30)}
+.l.y{background:radial-gradient(circle at 34% 28%,#ffd868,#e5a922 62%);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.30)}
+.l.g{background:radial-gradient(circle at 34% 28%,#5ce072,#1fb739 62%);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.30)}
+#bar .t{position:absolute;left:0;right:0;text-align:center;pointer-events:none;
+  font:600 15px/1 'UI','Noto Sans CJK JP','Hiragino Sans',-apple-system,sans-serif;letter-spacing:.008em;
+  color:rgba(240,237,230,.80)}
+/* the terminal body: THIS is the frosted glass */
+#glass{width:max-content;background:rgba(9,11,17,.88);backdrop-filter:blur(34px) saturate(135%);
+  -webkit-backdrop-filter:blur(34px) saturate(135%);padding:10px 16px 16px}
+
+/* asciinema-player: let the glass show through, use our font */
+#term,#term .ap-wrapper{width:max-content}
+#term .ap-wrapper,#term .ap-player{background:transparent!important;box-shadow:none!important}
+#term .ap-term{border:0!important;
+  font-family:'JBMono','JetBrains Mono',monospace!important;
+  font-variant-ligatures:none;
+  line-height:1.36!important;text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 12px rgba(0,0,0,.55)}
+#term .ap-control-bar,#term .ap-overlay{display:none!important}
+#term pre,#term .ap-line{background:transparent!important}
+
+/* ---------- dock ---------- */
+#dock{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:3;
+  display:flex;align-items:flex-end;gap:14px;padding:13px 19px;border-radius:27px;
+  background:rgba(226,228,240,.20);backdrop-filter:blur(44px) saturate(180%);
+  -webkit-backdrop-filter:blur(44px) saturate(180%);
+  box-shadow:0 0 0 .5px rgba(255,255,255,.22), 0 18px 44px rgba(0,0,0,.42),
+             inset 0 1px 0 rgba(255,255,255,.24)}
+#dock .app{width:64px;height:64px;display:block;
+  filter:drop-shadow(0 3px 6px rgba(0,0,0,.40))}
+#dock .run{position:relative}
+#dock .run::after{content:'';position:absolute;left:50%;bottom:-9px;width:5px;height:5px;
+  transform:translateX(-50%);border-radius:50%;background:rgba(240,240,248,.88)}
+#dock .sep{width:1px;height:52px;margin:0 3px;background:rgba(255,255,255,.24);align-self:center}
+/* terminal palette. Override these tokens per project — and VERIFY they applied
+   (see chrome/README.md): a <style> in the wrong place is silently ignored. */
+:root, #term .asciinema-player-theme-demo, #term .ap-player{
+  --term-color-foreground:#e7e2d6; --term-color-background:rgba(9,11,16,.58);
+  --term-color-0:#171b1e; --term-color-1:#e08d7d; --term-color-2:#a3c58c; --term-color-3:#dcb76d;
+  --term-color-4:#93b6cd; --term-color-5:#c69fbf; --term-color-6:#92c7c0; --term-color-7:#e7e2d6;
+  --term-color-8:#252a2f; --term-color-9:#e59a8c; --term-color-10:#b6d69e; --term-color-11:#e8cb89;
+  --term-color-12:#a9c8de; --term-color-13:#d7b1cf; --term-color-14:#a9d8d1; --term-color-15:#ffffff;
+}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+ <clipPath id="squircle" clipPathUnits="objectBoundingBox"><path d="M1.0000,0.5000 L0.9999,0.6253 L0.9996,0.6652 L0.9991,0.6943 L0.9984,0.7179 L0.9975,0.7381 L0.9964,0.7559 L0.9951,0.7719 L0.9937,0.7866 L0.9920,0.8001 L0.9901,0.8126 L0.9880,0.8243 L0.9856,0.8352 L0.9831,0.8456 L0.9804,0.8553 L0.9774,0.8646 L0.9743,0.8733 L0.9709,0.8817 L0.9673,0.8896 L0.9634,0.8971 L0.9594,0.9043 L0.9550,0.9111 L0.9505,0.9176 L0.9457,0.9238 L0.9406,0.9297 L0.9353,0.9353 L0.9297,0.9406 L0.9238,0.9457 L0.9176,0.9505 L0.9111,0.9550 L0.9043,0.9594 L0.8971,0.9634 L0.8896,0.9673 L0.8817,0.9709 L0.8733,0.9743 L0.8646,0.9774 L0.8553,0.9804 L0.8456,0.9831 L0.8352,0.9856 L0.8243,0.9880 L0.8126,0.9901 L0.8001,0.9920 L0.7866,0.9937 L0.7719,0.9951 L0.7559,0.9964 L0.7381,0.9975 L0.7179,0.9984 L0.6943,0.9991 L0.6652,0.9996 L0.6253,0.9999 L0.5000,1.0000 L0.3747,0.9999 L0.3348,0.9996 L0.3057,0.9991 L0.2821,0.9984 L0.2619,0.9975 L0.2441,0.9964 L0.2281,0.9951 L0.2134,0.9937 L0.1999,0.9920 L0.1874,0.9901 L0.1757,0.9880 L0.1648,0.9856 L0.1544,0.9831 L0.1447,0.9804 L0.1354,0.9774 L0.1267,0.9743 L0.1183,0.9709 L0.1104,0.9673 L0.1029,0.9634 L0.0957,0.9594 L0.0889,0.9550 L0.0824,0.9505 L0.0762,0.9457 L0.0703,0.9406 L0.0647,0.9353 L0.0594,0.9297 L0.0543,0.9238 L0.0495,0.9176 L0.0450,0.9111 L0.0406,0.9043 L0.0366,0.8971 L0.0327,0.8896 L0.0291,0.8817 L0.0257,0.8733 L0.0226,0.8646 L0.0196,0.8553 L0.0169,0.8456 L0.0144,0.8352 L0.0120,0.8243 L0.0099,0.8126 L0.0080,0.8001 L0.0063,0.7866 L0.0049,0.7719 L0.0036,0.7559 L0.0025,0.7381 L0.0016,0.7179 L0.0009,0.6943 L0.0004,0.6652 L0.0001,0.6253 L0.0000,0.5000 L0.0001,0.3747 L0.0004,0.3348 L0.0009,0.3057 L0.0016,0.2821 L0.0025,0.2619 L0.0036,0.2441 L0.0049,0.2281 L0.0063,0.2134 L0.0080,0.1999 L0.0099,0.1874 L0.0120,0.1757 L0.0144,0.1648 L0.0169,0.1544 L0.0196,0.1447 L0.0226,0.1354 L0.0257,0.1267 L0.0291,0.1183 L0.0327,0.1104 L0.0366,0.1029 L0.0406,0.0957 L0.0450,0.0889 L0.0495,0.0824 L0.0543,0.0762 L0.0594,0.0703 L0.0647,0.0647 L0.0703,0.0594 L0.0762,0.0543 L0.0824,0.0495 L0.0889,0.0450 L0.0957,0.0406 L0.1029,0.0366 L0.1104,0.0327 L0.1183,0.0291 L0.1267,0.0257 L0.1354,0.0226 L0.1447,0.0196 L0.1544,0.0169 L0.1648,0.0144 L0.1757,0.0120 L0.1874,0.0099 L0.1999,0.0080 L0.2134,0.0063 L0.2281,0.0049 L0.2441,0.0036 L0.2619,0.0025 L0.2821,0.0016 L0.3057,0.0009 L0.3348,0.0004 L0.3747,0.0001 L0.5000,0.0000 L0.6253,0.0001 L0.6652,0.0004 L0.6943,0.0009 L0.7179,0.0016 L0.7381,0.0025 L0.7559,0.0036 L0.7719,0.0049 L0.7866,0.0063 L0.8001,0.0080 L0.8126,0.0099 L0.8243,0.0120 L0.8352,0.0144 L0.8456,0.0169 L0.8553,0.0196 L0.8646,0.0226 L0.8733,0.0257 L0.8817,0.0291 L0.8896,0.0327 L0.8971,0.0366 L0.9043,0.0406 L0.9111,0.0450 L0.9176,0.0495 L0.9238,0.0543 L0.9297,0.0594 L0.9353,0.0647 L0.9406,0.0703 L0.9457,0.0762 L0.9505,0.0824 L0.9550,0.0889 L0.9594,0.0957 L0.9634,0.1029 L0.9673,0.1104 L0.9709,0.1183 L0.9743,0.1267 L0.9774,0.1354 L0.9804,0.1447 L0.9831,0.1544 L0.9856,0.1648 L0.9880,0.1757 L0.9901,0.1874 L0.9920,0.1999 L0.9937,0.2134 L0.9951,0.2281 L0.9964,0.2441 L0.9975,0.2619 L0.9984,0.2821 L0.9991,0.3057 L0.9996,0.3348 L0.9999,0.3747 L1.0000,0.5000 Z"/></clipPath>
+</defs></svg>
+<div id="desk"></div>
+
+<div id="menubar" class="chrome">
+  <span class="apple"></span><b id="mb-app"></b>
+  <span id="mb-1"></span><span id="mb-2"></span><span id="mb-3"></span><span id="mb-4"></span><span id="mb-5"></span>
+  <span class="sp">
+    <svg width="30" height="15" viewBox="0 0 30 15"><rect x=".75" y="1.6" width="24" height="11.8" rx="3.2" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.5"/><rect x="2.6" y="3.5" width="17" height="8" rx="1.8" fill="rgba(255,255,255,.92)"/><path d="M26.6 5.4v4.2a2.6 2.6 0 0 0 0-4.2z" fill="rgba(255,255,255,.6)"/></svg>
+    <svg width="20" height="15" viewBox="0 0 20 15"><g fill="none" stroke="rgba(255,255,255,.9)" stroke-width="1.7" stroke-linecap="round"><path d="M2 6.1a11 11 0 0 1 16 0"/><path d="M4.8 9a7 7 0 0 1 10.4 0"/></g><circle cx="10" cy="12.2" r="1.5" fill="rgba(255,255,255,.9)"/></svg>
+    <svg width="18" height="15" viewBox="0 0 18 15"><g fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.8" stroke-linecap="round"><path d="M2.5 5h13M2.5 10h13"/></g></svg>
+    <span style="font-weight:400" id="mb-clock"></span>
+  </span>
+</div>
+
+<div id="win">
+  <div id="bar">
+    <span class="lights"><i class="l r"></i><i class="l y"></i><i class="l g"></i></span>
+    <span class="t" id="win-title"></span>
+  </div>
+  <div id="glass"><div id="term"></div></div>
+</div>
+
+<div id="dock" class="chrome">
+  <img class="app run" src="icons/safari.svg" alt="">
+  <img class="app" src="icons/internet-mail.svg" alt="">
+  <img class="app" src="icons/calendar.svg" alt="">
+  <img class="app" src="icons/appstore.svg" alt="">
+  <img class="app" src="icons/g4music.svg" alt="">
+  <img class="app" src="icons/settings.svg" alt="">
+  <img class="app run" src="icons/terminal.svg" alt="">
+  <span class="sep"></span>
+  <img class="app" src="icons/trash.svg" alt="">
+</div>
+  <div class="app" style="--a:#5fbdf5;--b:#2a86d8"><i></i><svg viewBox="0 0 64 64"><rect x="10" y="19" width="44" height="27" rx="5" fill="#fff" opacity=".96"/><path d="M12 22l20 15 20-15" fill="none" stroke="#2a86d8" stroke-width="3.4" stroke-linejoin="round"/></svg></div>
+  <div class="app" style="--a:#f7f7f9;--b:#d3d3da"><i></i><svg viewBox="0 0 64 64"><rect x="11" y="14" width="42" height="38" rx="6" fill="#fff"/><rect x="11" y="14" width="42" height="12" rx="6" fill="#e8534a"/><text x="32" y="46" font-family="Noto Sans,sans-serif" font-size="22" font-weight="700" fill="#3a3a42" text-anchor="middle">4</text></svg></div>
+  <div class="app" style="--a:#ffd35c;--b:#f0a92e"><i></i><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="19" fill="#fff" opacity=".22"/><g fill="#fff"><circle cx="32" cy="19" r="5.4"/><circle cx="45" cy="32" r="5.4"/><circle cx="32" cy="45" r="5.4"/><circle cx="19" cy="32" r="5.4"/></g></svg></div>
+  <div class="app" style="--a:#6fd2a8;--b:#2f9c74"><i></i><svg viewBox="0 0 64 64"><rect x="11" y="16" width="42" height="32" rx="5" fill="#fff" opacity=".95"/><circle cx="24" cy="27" r="4.4" fill="#ffd35c"/><path d="M13 44l12-13 9 9 6-6 11 10z" fill="#2f9c74"/></svg></div>
+  <div class="app" style="--a:#8f7ff0;--b:#5a45c8"><i></i><svg viewBox="0 0 64 64"><path d="M26 44V21l18-4v23" fill="none" stroke="#fff" stroke-width="3.4" stroke-linejoin="round"/><circle cx="22" cy="44" r="5" fill="#fff"/><circle cx="40" cy="40" r="5" fill="#fff"/></svg></div>
+  <div class="app run" style="--a:#22252c;--b:#0e1014"><i></i><svg viewBox="0 0 64 64"><rect x="9" y="14" width="46" height="36" rx="5" fill="none" stroke="#e8e8ee" stroke-width="2.6" opacity=".8"/><path d="M18 26l6 6-6 6" fill="none" stroke="#9fe08a" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 38h14" stroke="#e8e8ee" stroke-width="3.2" stroke-linecap="round"/></svg></div>
+  <span class="sep"></span>
+  <div class="app" style="--a:#b9bcc7;--b:#7e828e"><i></i><svg viewBox="0 0 64 64"><path d="M20 24h24l-2.4 26a4 4 0 0 1-4 3.6H26.4a4 4 0 0 1-4-3.6z" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><path d="M17 22h30M27 20v-2.5a2.5 2.5 0 0 1 2.5-2.5h5a2.5 2.5 0 0 1 2.5 2.5V20" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg></div>
+</div>
+</div>
+
+<script src="node_modules/asciinema-player/dist/bundle/asciinema-player.min.js"></script>
+<script>
+document.documentElement.style.setProperty('--apple',
+  "url(\"data:image/svg+xml;utf8," + encodeURIComponent(
+   '<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 26 32\"><path d=\"M20.4 17c0-4 3.2-5.9 3.3-6-1.8-2.7-4.6-3-5.6-3.1-2.6-.2-4.8 1.4-6 1.4-1.3 0-3.1-1.4-5.1-1.3C4.3 8 1.9 9.6.6 12.1c-2.6 4.6-.7 11.3 1.9 15 1.3 1.8 2.8 3.8 4.8 3.7 1.9-.1 2.6-1.2 4.9-1.2s2.9 1.2 4.9 1.2c2 0 3.3-1.8 4.6-3.6 1.4-2 2-4 2-4.1-.1 0-3.3-1.3-3.3-5.1zM16.6 5.3C17.7 4 18.4 2.2 18.2.4c-1.6.1-3.5 1.1-4.6 2.4-1 1.1-1.8 3-1.6 4.7 1.8.2 3.6-.9 4.6-2.2z\" fill=\"black\"/></svg>')+"\")");
+/* ------------------------------------------------------------------
+   Chrome strings. This is the ONLY place the demo's language lives — the
+   recorded CLI's own TUI is almost never localisable, but the desktop
+   around it is your own CSS and must match, or the frame reads as an
+   English desktop with a foreign-language app sitting inside it.
+   ------------------------------------------------------------------ */
+const CHROME = {
+  locale : 'ja-JP',
+  menu   : ['ターミナル','シェル','編集','表示','ウインドウ','ヘルプ'],
+  // Apple writes ウインドウ, not ウィンドウ. A native speaker notices immediately.
+  title  : 'claude',
+  cols   : 92, rows : 30,
+  clock  : d => `${d.getMonth()+1}月${d.getDate()}日(${'日月火水木金土'[d.getDay()]}) `
+              + `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+};
+(function paint(){
+  const m = CHROME.menu;
+  document.getElementById('mb-app').textContent = m[0];
+  for (let i = 1; i < 6; i++) {
+    const el = document.getElementById('mb-'+i);
+    if (el) el.textContent = m[i] || '';
+  }
+  // Compute the weekday; never hand-write the character.
+  document.getElementById('mb-clock').textContent = CHROME.clock(new Date());
+  // Terminal.app's title is "<title> — <cols>×<rows>".
+  document.getElementById('win-title').textContent =
+    `${CHROME.title} — ${CHROME.cols}×${CHROME.rows}`;
+})();
+
+window.__DONE__=false; window.__START__=false;
+window.startDemo=function(){window.__START__=true};
+const CAST = 'final.cast';
+const player = window.__player__ = AsciinemaPlayer.create(CAST, document.getElementById('term'), {
+  cols: 92, rows: 30,
+  autoPlay: false, controls: false, loop: false,
+  terminalFontFamily: "'JBMono','JetBrains Mono',monospace",
+  terminalFontSize: '24px',
+  terminalLineHeight: 1.36,
+  fit: false,
+  theme: 'demo'
+});
+(async () => {
+  while(!window.__START__) await new Promise(r=>setTimeout(r,16));
+  document.getElementById('hold')?.remove();
+  document.getElementById('win').style.animationPlayState='running';
+  player.play();
+  // hold the finished screen on camera before the end marker goes up
+  player.addEventListener('ended', () => setTimeout(() => {
+    const e=document.createElement('div');
+    e.id='endmark';
+    e.style.cssText='position:absolute;inset:0;background:#FF00FF;z-index:99';
+    document.body.appendChild(e);
+    window.__DONE__=true;
+  }, 9500));
+})();
+</script>
+<div id="hold" style="position:absolute;inset:0;background:#FF00FF;z-index:99"></div>
+</body></html>

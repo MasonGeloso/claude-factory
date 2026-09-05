@@ -275,3 +275,51 @@ Save the draft, confirm the save succeeded, and hand back: the draft URL, the re
 table-of-contents/heading list, figure count, and any auto-linked domains worth flagging. Never click
 the publish control unless this content type's autonomy mode explicitly grants standing publish
 authority for this platform.
+
+---
+
+## Observed on note.com specifically (2026-09-04, ProseMirror editor)
+
+These are measured on note.com's own editor and take precedence over the hedged
+"this kind of editor" wording above where they conflict.
+
+**note.com DOES parse Markdown on paste, and parses it well.** One paste of a full article produced
+`H2` headings (feeding the 目次 rail), `OL` lists, `HR` rules, and blockquotes as `FIGURE` nodes —
+no manual heading pass needed at all. This is the opposite of X Articles, where everything arrives
+as body text. Two consequences:
+
+- **A `#` line INSIDE a fenced code block still becomes a real heading.** An example file whose
+  first line is `# 7532 …` shows up in the 目次 as if it were a section of the article. Demote it:
+  scroll it into view, real-select the line, floating toolbar → 見出し → **指定なし**. Verify by
+  reading the 目次 rail, which should list exactly the article's own sections and nothing else.
+- **Never hard-wrap paragraphs in the source Markdown.** Every wrap becomes a literal `<br>` inside
+  the paragraph, so a sentence breaks mid-clause in the rendered article. One ~4,300-character
+  article carried **33** of them. (The same source on X becomes 44 stray mid-sentence *spaces*
+  instead.) Keep every paragraph, list item and blockquote line on one physical line in the `.md`.
+
+**The cover-image file input exists — it just mounts late.** The earlier belief that note's cover
+required a human click was a false negative from querying too early. What works:
+
+1. Click the cover control → 「画像をアップロード」 in the menu.
+2. **Wait ~2–3 seconds**, then query `input[type=file]` (a same-tick query returns nothing).
+3. The input is `display:none`, so `find` cannot see it. Make it addressable, then upload by ref:
+   ```js
+   const i = document.querySelector('input[type=file]');
+   i.setAttribute('aria-label','COVERUPLOADINPUT');
+   i.style.cssText = 'position:fixed;top:200px;left:400px;width:300px;height:40px;opacity:1;z-index:99999;display:block';
+   ```
+   then `find` "COVERUPLOADINPUT" → `file_upload` with that ref.
+4. The 「画像のサイズの変更」 crop modal opens; a pre-padded 1280×670 source needs no adjustment —
+   click 保存.
+
+**Captions are plain ProseMirror nodes, not a modal** (unlike X). Put a collapsed caret at
+`setStart(figcaption, 0)` and type — the text lands directly.
+
+**`scrollIntoView()` on an editor node does not reliably move note's viewport.** Use
+`window.scrollTo(0, node.getBoundingClientRect().top + window.scrollY - 300)`. This matters because
+the floating format toolbar only appears once the selected block is actually on screen — a JS-set
+range alone does not summon it.
+
+**The same select → wait → key discipline as X applies here.** A JS-set `Range` followed by a
+keystroke in the same batch acts at the old caret. Use `[js-select, wait 1s, key] × N` and have each
+JS step verify the character count moved by exactly the amount the previous step predicted.

@@ -164,3 +164,85 @@ back, then build anything that references it.
 - [ ] Exactly one composer mounted **inside the modal** — confirmed, not assumed
 - [ ] Correct account confirmed (see the top of this doc)
 - [ ] Publish authority confirmed: standing autonomous authorization, or an explicit human go-ahead
+
+## Video attachments: the browser must be able to DECODE the file, and this one can't (2026-09-05)
+
+Images attach to the X composer through a file input in one call and upload immediately. **Video
+does not** — in a Chrome instance whose media pipeline can't decode a local file.
+
+What it looks like: a grey placeholder with a spinner that never resolves, **no request to any
+`upload` endpoint**, no console error. X eventually shows a small toast: 「一部の画像/動画を読み込め
+ません。」 ("some images/videos could not be loaded").
+
+**Root cause, confirmed directly.** X reads the video's metadata locally to build the preview before
+it uploads anything. That read never finishes here:
+
+```js
+const url = URL.createObjectURL(new File([bytes],'x.mp4',{type:'video/mp4'}));
+const v = document.createElement('video'); v.preload='auto'; v.src = url;
+// after 9s:  readyState 0  ·  networkState 2 (NETWORK_LOADING)  ·  no error  ·  no CSP violation
+```
+
+The video element sits in NETWORK_LOADING forever and never fires `loadedmetadata`. No upload can
+start because X never gets past validation.
+
+**Rule out these first — all were measured and none is the cause:**
+
+| checked | result |
+|---|---|
+| the encode | 640×360 baseline, no B-frames, 3 s, **67 KB** fails identically to 720p/4.2 MB/55 s. Not size, duration, profile, or container. |
+| codec support | `canPlayType` says "probably" for avc1 baseline *and* main; `MediaSource.isTypeSupported` true for both. H.264 is nominally supported. |
+| CSP | no `securitypolicyviolation` event fires during the load; `blob:` is not blocked. |
+| connectivity | `upload.twitter.com` answers a preflight 202 from the page; both upload hosts resolve and connect from the shell. |
+
+**Do not spend rounds re-encoding.** Run the four-line video-element probe above first: if
+`readyState` stays 0, the browser is the problem and no file will work.
+
+**Workarounds that do NOT work** (all measured): synthetic `DragEvent` drop with a `File` (swept all
+334 elements in the composer subtree — X checks `isTrusted`); synthetic `ClipboardEvent` paste with a
+`File`; a real `ctrl+v` with `text/uri-list` on the X11 clipboard. Getting bytes *into* the page does
+work — `navigator.clipboard.readText()` on base64 set with `xclip`, which needs the document focused,
+so click into the page first and never let a shell call steal focus in between — but there is nothing
+useful to do with them once X refuses untrusted events.
+
+**What to do:** build the post properly, **save it as an X draft**, and have a human attach the video
+and send. Two clicks for them, and the draft keeps the exact wording and the quoted post.
+
+## Quote posts: use the 引用 menu, not a URL in the text
+
+Pasting a status URL into the composer leaves a **bare blue link**. It does not render the quoted
+post as a card in the composer, and it is not the same object as a quote post. Use the post's repost
+button → 引用する, which opens a composer with the quoted post embedded; the comment goes in
+「コメントを追加」 above it. Verify before saving: the composer's text should contain 引用 followed by
+the quoted author and post.
+
+
+### When a step genuinely needs the human, hand it off *inside the composer*
+
+Owner's instruction, 2026-09-05, after a video had to be attached by hand:
+
+> "leave the quote tweet open and put the path in the tweet so I see it, know the path to upload and
+> know you are asking me to do it and then I'll delete the path text once I am done."
+
+So for any manual step in a post, do **not** just save a draft and describe the gap in chat. Instead:
+
+1. Build the post completely — text, quote card, everything that can be automated.
+2. **Append the ask and the absolute file path as a line in the post body itself**, phrased so it is
+   unmistakably a note and not content, e.g.
+   `⚠ ATTACH THIS THEN DELETE THIS LINE: /abs/path/to/file.mp4`
+3. **Leave the composer open on screen.** Don't save-and-close; the open composer is the handoff.
+4. Say in chat that it's open and waiting, in one line.
+
+The owner deletes that line after attaching. This puts the ask, the path, and the place to act in a
+single screen instead of three, and it makes the remaining work obvious rather than something they
+have to reconstruct from a chat message.
+
+**Corollary:** always give an absolute path, never "the file I sent" or a repo-relative path.
+
+### Before concluding a browser can't do video, check chrome://media-internals
+
+The instance that failed above was **real Google Chrome 149** (`/opt/google/chrome`, Widevine
+present), not a codec-less Chromium — so H.264 should have decoded and the stall is probably
+configuration, not a missing codec. If this recurs, load `chrome://media-internals` in a second tab,
+reproduce the attach, and read the pipeline error there before declaring it unfixable. Launch flags
+worth suspecting: `--disable-dev-shm-usage`, and anything touching the GPU process.
