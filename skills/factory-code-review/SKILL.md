@@ -31,14 +31,14 @@ This skill is read two ways:
 
 Score every category below against what you just read. PASS / WARN / FAIL each:
 
-1. **Correctness** — Does it do everything the issue asked? Trace the actual behavior, don't take the diff's word for it.
+1. **Correctness** — Does it do everything the issue asked, including every comment? Trace the actual behavior, don't take the diff's word for it. **Watch specifically for a requirement satisfied by seeded, hardcoded, or fixture data instead of the mechanism that was the point of the issue** — a UI built against stubbed rows where the pipeline producing those rows was the work. That is not a scope decision, it is an unbuilt requirement.
 2. **Bugs & edge cases** — Try to break it. What inputs/states/paths fail?
 3. **Security** — Auth holes, missing validation on sensitive paths, leaked secrets, admin endpoints that don't check for admin.
 4. **Duplication & simplification** — Reinvented something that already exists in the repo? Unnecessary abstraction for a one-shot need?
 5. **Conventions & interfaces** — Matches this codebase's existing patterns, or off the rails?
 6. **Test coverage** — Are the new/changed paths actually tested, not just touched?
-7. **Documentation** — Anything that warranted a doc update and didn't get one?
-8. **Project-specific checklist** — every bullet from `factory/code-review.md`'s checklist, each scored on its own line.
+7. **Documentation** — Anything that warranted a doc update and didn't get one? And the other direction: does any **existing** doc now describe behavior this diff removed, renamed, or changed? A doc left describing the old shape is worse than no doc — grep the docs for the symbols the diff touched.
+8. **Project-specific checklist** — open `factory/code-review.md` and turn **every bullet into its own todo**, then work them one at a time. Each bullet gets its own targeted scan — grep for the thing it names, open the files it points at — not one pass over the diff answering all of them from memory. Each is scored on its own row, and its note must cite what you actually looked at: a `file:line` where it hits, or `n/a — <why this diff cannot violate it>` where it doesn't. "Looks fine" on a checklist row is not a review of that row.
 
 ## Output & posting
 

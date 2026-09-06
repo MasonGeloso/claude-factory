@@ -43,7 +43,10 @@ So:
    supersede the original description; the intent you are QAing against lives there.
 2. **Re-read the plan** (`./tasks/*.md`) and skim the diff (`git diff <base>...HEAD`) — not to review it,
    but so you know **what to go poke at** and which shortcuts to be suspicious of.
-3. **Confirm the stack is genuinely up and serving the new code.** Provision/reload exactly as the
+3. **Read `factory/qa.md`** — this project's own QA checklist: the things that only show up on the
+   running thing and that this codebase gets wrong repeatedly. If the file doesn't exist, run the
+   generic checks only and say so in the report.
+4. **Confirm the stack is genuinely up and serving the new code.** Provision/reload exactly as the
    repo's `factory/` docs say (`factory/dev-manager.md` if present, else `factory/deployment.md`), and
    use the URLs/ports that tooling actually reports — never a hardcoded address. If you're QAing stale
    builds you are wasting the whole step, so verify the running thing includes your change.
@@ -86,7 +89,7 @@ not remember the details later.
 - **Backend / CLI / API:** exercise it for real — the CLI, real requests, the actual job/queue — and read
   the logs while it runs.
 
-### The four things you are checking
+### The five things you are checking
 
 Score each of these; every one gets a row in the report.
 
@@ -129,6 +132,13 @@ Look at it — critically, as a designer would, not as the person who wrote it.
 - **The bar is professional and polished. Amateurish is a FAIL.** Consult the **`frontend-design`**
   skill for the standard you're holding it to. Do not accept "good enough" — if you'd be embarrassed
   showing it to the user, it isn't done. Keep fixing until it is genuinely right.
+
+**5. The project's own checklist (`factory/qa.md`).**
+Turn **every bullet into its own todo** and walk them one at a time, on the running thing. Each bullet
+gets its own targeted look — open the surface it names, run the case it describes — not one glance at
+the feature answering all of them at once. Each gets its own row in the report table, and its note
+must cite what you actually did or saw (a screenshot, a value, a viewport width), or `n/a — <why this
+change cannot violate it>`. "Looks fine" on a checklist row is not a QA of that row.
 
 ### If it's an LLM / data pipeline, QA the pipeline, not the plumbing
 
@@ -197,6 +207,7 @@ A QA run that isn't written down didn't happen. Post a comment on the issue with
 | Design polish (professional bar) | ✅/⚠️/❌ | one-line TLDR |
 | Pipeline/output quality (3–5 examples) | ✅/⚠️/❌ | one-line TLDR, or `n/a` |
 | Evidence captured (screenshots/output) | ✅/⚠️/❌ | one-line TLDR |
+| *(one row per `factory/qa.md` bullet)* | ✅/⚠️/❌ | what you looked at, or `n/a — reason` |
 
 Rows that genuinely don't apply (e.g. the UI rows on a pure-backend change, the pipeline row on a UI
 change) are marked `n/a` — but "n/a" for a UI row on anything a user can see is not acceptable.
@@ -243,8 +254,9 @@ You were handed nothing but this file's path, a PR, and an issue. This is a plai
 file, not a Claude Code skill invocation — just follow it as your task:
 
 1. Work inside the repo the PR belongs to (a read-only checkout is enough; you don't need to build).
-2. Read `factory/` at the repo root — `factory/code-review.md` for the project's own checklist,
-   `factory/intake.md` for the tracker CLI.
+2. Read `factory/` at the repo root — `factory/qa.md` for the project's own QA checklist,
+   `factory/code-review.md` for its code checklist and reviewer config, `factory/intake.md` for the
+   tracker CLI.
 3. Read the **issue and every comment** in full, the **full PR diff**, and the **QA report comment** plus
    any linked screenshots/artifacts.
 4. Answer the questions in the prompt above — focus on **what the QA missed**, not on re-reviewing the

@@ -68,8 +68,11 @@ Score every category below against what you just read. PASS / WARN / FAIL each:
    needs?
 4. **Risk & unknowns** — does the plan surface its own open questions/risks honestly, or does it paper
    over a genuine unknown as if it were settled?
-5. **Project-specific checklist** — every bullet from `factory/plan-review.md`'s checklist, each
-   scored on its own line.
+5. **Project-specific checklist** — open `factory/plan-review.md` and turn **every bullet into its own
+   todo**, then work them one at a time. Each bullet gets its own targeted pass: find where the plan
+   addresses it (quote the section) or establish that it is silent on it. Each is scored on its own
+   row, and its note must say which part of the plan settled it, or `n/a — <why this plan cannot
+   violate it>`. A plan that is *silent* on an applicable bullet has not satisfied it.
 
 ## Output & posting
 
