@@ -27,9 +27,13 @@ Write what you find (logs, repro steps, what you confirmed/disproved) into the p
 - Re-research the codebase in **new** areas you hadn't looked, and start finding holes or issues with the plan.
 - Revise the plan with your findings.
 
+Apply the [conditional failure checks](references/preventable-failures.md) when this task changes progress tracking,
+scheduling, data representation, external payload handling or pipeline monitoring. Reuse applicable
+evidence in the existing gate; do not add a review round just to restate it.
+
 ## Rules
 - Do not introduce anti-patterns.
 - Do not duplicate logic/utils/services/stores that already exist — find and reuse them.
 - Do not add comments on *what* is happening. If something needs explaining, add a comment **block** on *why*.
 - Plan to put imports at the top of the file, never inline.
-- Do not run things to "test" at this stage — this is planning. (Execution and verification happen in later steps.)
+- Use bounded diagnostic reproductions or contract probes to resolve planning uncertainty; leave full implementation and acceptance verification to execution and QA.

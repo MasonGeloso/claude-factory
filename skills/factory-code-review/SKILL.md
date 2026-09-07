@@ -31,6 +31,10 @@ Keep the full review scope; do not manufacture a new blocker merely because earl
 - Read the PR description and **every comment**, start to finish — none skipped, none truncated, same rule as the rest of Factory.
 - Read the **originating issue** the PR closes/references, including its own comment thread, if one is linked. The requirements live there, not just in the diff.
 
+Apply the [conditional failure checks](../factory-plan/references/preventable-failures.md) when this task changes progress tracking,
+scheduling, data representation, external payload handling or pipeline monitoring. Reuse applicable
+evidence in the existing gate; do not add a review round just to restate it.
+
 ## Step 3 — Review
 
 Score every category below against what you just read. PASS / WARN / FAIL each:

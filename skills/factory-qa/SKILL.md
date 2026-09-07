@@ -56,6 +56,10 @@ screenshots. Mark only inapplicable rows n/a with a reason. The QA gate still ru
    use the URLs/ports that tooling actually reports — never a hardcoded address. If you're QAing stale
    builds you are wasting the whole step, so verify the running thing includes your change.
 
+Apply the [conditional failure checks](../factory-plan/references/preventable-failures.md) when this task changes progress tracking,
+scheduling, data representation, external payload handling or pipeline monitoring. Reuse applicable
+evidence in the existing gate; do not add a review round just to restate it.
+
 ## Step 2 — Write the scenario list BEFORE you start clicking
 
 Write out, explicitly, **the things a real user would actually do with this feature.** Not test cases
