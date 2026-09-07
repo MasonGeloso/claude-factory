@@ -21,6 +21,10 @@ This skill is read two ways:
 - Find `factory/` at the repo root. Read `factory/code-review.md` for this project's own "always check for" checklist and which tracker CLI to use for pulling/posting. If that file doesn't exist, fall back to `factory/intake.md`'s tracker CLI and run the generic checklist only — say so in your output.
 - Identify the PR from the prompt you were given (a URL, or `<owner>/<repo>#<num>`).
 
+For a follow-up, also follow [finding closure and round quality](references/review-runs.md#make-each-round-earn-its-cost).
+Use prior finding IDs and repair evidence to distinguish an incomplete fix from a new regression.
+Keep the full review scope; do not manufacture a new blocker merely because earlier findings closed.
+
 ## Step 2 — Read everything
 
 - Pull the **full diff** with the tracker CLI (e.g. `gh pr diff <PR>` / the `glab` equivalent).

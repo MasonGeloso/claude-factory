@@ -59,6 +59,8 @@ instead — same review, just performed by you.
 
 For every external gate, follow [review run handling](../factory-code-review/references/review-runs.md):
 isolated output, owned process handle, successful exit, and a verdict tied to unchanged inputs.
+Maintain its finding register across rounds; a repeated root problem changes the repair strategy,
+not just the next line to patch.
 
 Note the split: **`factory-qa` itself always runs in-context** (it has to drive a real browser and a
 real stack); only its *final second-opinion step* shells out.

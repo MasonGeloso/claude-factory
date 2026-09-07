@@ -272,6 +272,8 @@ file, not a Claude Code skill invocation — just follow it as your task:
 
 Use [review run handling](../factory-code-review/references/review-runs.md) for this invocation too.
 Identify the reviewed HEAD and QA report; inaccessible evidence is an unverified check, not a PASS.
+Use the finding register and affected-scenario evidence rules in that guide; identify new defects,
+incomplete fixes and evidence-only updates separately.
 
 ### Handling the result
 

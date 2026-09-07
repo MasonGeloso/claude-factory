@@ -35,3 +35,22 @@ retain final reports with the project's normal handoff artifacts.
 Deferred: scheduler-wide overlap enforcement (the marketing lane already has account-lock rules),
 atomic multi-process installed-agent manifest updates, and empirical measurements of reviewer cost
 or defect escape rates after adoption. No claim of zero future agent errors or universal skill compliance.
+
+## Follow-up: review value and repeated failures
+
+A deeper downstream audit found both consequential defect discovery and avoidable review loops.
+Recurring causes were incomplete cross-caller fixes, regressions introduced by local patches, plans
+accumulating contradictory historical contracts, and full evidence refreshes after narrow changes.
+Some final CLI responses were shorter than the posted report, so a verdict file alone is insufficient
+feedback. This does not establish that lost feedback caused every repeated finding.
+
+The review-run guide now adds stable finding IDs/dispositions, complete-report retrieval, closure via
+real counterexamples, a change in repair strategy when the same root problem returns, and review-yield
+timing/categories. Plan review distinguishes executable ambiguity from harmless prose cleanup and
+keeps a single authoritative design. QA carries forward unaffected evidence only after a dependency
+check. The blocking gate remains; no fixed round limit or automatic waiver was introduced.
+
+Validation: walkthroughs against a repeated state-transition defect, a summary-only reviewer response,
+a plan with a stale field-count sentence, and an artifact-only follow-up. Existing subprocess tests
+remain applicable to the unchanged runner. These are instruction checks, not measured proof that future
+agents will be faster; post-adoption outcomes need measurement.

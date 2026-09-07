@@ -51,6 +51,23 @@ This skill is read two ways:
   patterns. Not a full read of the codebase, just enough to check the plan's own claims about what's
   there.
 
+## Keep the plan authoritative
+
+When a design changes, revise its authoritative sections and remove superseded schemas, examples and
+tests from the active contract. Keep necessary decision history separate and explicitly non-normative;
+do not append a new design below an incompatible old one. Preserve every accepted requirement.
+
+A plan review decides whether implementation has a sound direction: scope, ownership, invariants,
+external contracts and how to verify them. It need not pre-write every constructor or incidental field
+count. A contradiction about which actor can release paid work is blocking; a redundant prose count
+is a warning when the actual schema and behavior are unambiguous. If correctness depends on a subtle
+state machine or provider behavior, use a small executable contract/probe to resolve that uncertainty
+instead of growing speculative prose through more review rounds.
+
+For follow-ups, use [finding closure and round quality](../factory-code-review/references/review-runs.md#make-each-round-earn-its-cost).
+Review all known consequences of a changed design together. Classify each new finding by concrete
+impact, and verify earlier fixes without making settled details a new design exercise.
+
 ## Step 3 — Review
 
 Score every category below against what you just read. PASS / WARN / FAIL each:
