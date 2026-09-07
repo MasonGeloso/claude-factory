@@ -16,6 +16,9 @@
   `codex exec -C <worktree dir> --approve-for-me -c 'sandbox_workspace_write.network_access=true' -o <output file> "Read <abs path>/factory-code-review/SKILL.md and follow it. Review PR: <PR_URL>." < /dev/null`
   Note: `--approve-for-me` and `-s/--sandbox` are **mutually exclusive** in this version —
   `--approve-for-me` already implies the workspace-write sandbox, don't pass both.>
+- **Run handling:** Use the bundled `factory-code-review/scripts/run_review.py` wrapper and
+  `references/review-runs.md`. Give each invocation its own output and record its task handle;
+  require successful process exit and a verdict for the current revision.
 - **Tracker CLI for PR diff/comments:** <gh | glab | … — usually the same CLI as `factory/intake.md`; only list here if it differs>
 - **Credentials:** <reuse whatever auth `factory/intake.md` already documents — don't stand up a separate credential unless explicitly asked>
 

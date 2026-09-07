@@ -21,6 +21,10 @@ This skill is read two ways:
 - Find `factory/` at the repo root. Read `factory/code-review.md` for this project's own "always check for" checklist and which tracker CLI to use for pulling/posting. If that file doesn't exist, fall back to `factory/intake.md`'s tracker CLI and run the generic checklist only — say so in your output.
 - Identify the PR from the prompt you were given (a URL, or `<owner>/<repo>#<num>`).
 
+For a follow-up, also follow [finding closure and round quality](references/review-runs.md#make-each-round-earn-its-cost).
+Use prior finding IDs and repair evidence to distinguish an incomplete fix from a new regression.
+Keep the full review scope; do not manufacture a new blocker merely because earlier findings closed.
+
 ## Step 2 — Read everything
 
 - Pull the **full diff** with the tracker CLI (e.g. `gh pr diff <PR>` / the `glab` equivalent).
@@ -39,6 +43,10 @@ Score every category below against what you just read. PASS / WARN / FAIL each:
 6. **Test coverage** — Are the new/changed paths actually tested, not just touched?
 7. **Documentation** — Anything that warranted a doc update and didn't get one? And the other direction: does any **existing** doc now describe behavior this diff removed, renamed, or changed? A doc left describing the old shape is worse than no doc — grep the docs for the symbols the diff touched.
 8. **Project-specific checklist** — open `factory/code-review.md` and turn **every bullet into its own todo**, then work them one at a time. Each bullet gets its own targeted scan — grep for the thing it names, open the files it points at — not one pass over the diff answering all of them from memory. Each is scored on its own row, and its note must cite what you actually looked at: a `file:line` where it hits, or `n/a — <why this diff cannot violate it>` where it doesn't. "Looks fine" on a checklist row is not a review of that row.
+
+Before deciding the verdict, identify the exact reviewed revision and check that requirements from
+later user corrections were included. Separate blocking defects from optional unrelated improvements.
+A cold external reviewer performs this review itself; do not recursively launch another reviewer.
 
 ## Output & posting
 

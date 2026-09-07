@@ -26,12 +26,9 @@ This skill is read two ways:
 - Make sure you're working inside the repo the plan belongs to (the worktree it was built in, or a
   fresh checkout/clone if you're starting cold — read-only is enough, you don't need to build
   anything).
-- Find `factory/` at the repo root. **Read `factory/code-review.md` for the reviewer tool +
-  invocation.** This skill has **no separate tool configuration** — it always reuses whatever
-  `factory/code-review.md` names, pointed at this file instead. If `factory/code-review.md` doesn't
-  exist, or exists with `Enabled: no`, stop and say external plan review is unavailable — do not fall
-  back to some other tool or ask the user to configure one here; that config lives in exactly one
-  place.
+- Find `factory/` at the repo root. Read `factory/code-review.md` for context if present.
+  The driver owns tool selection and invocation; an already-invoked reviewer reviews the plan itself,
+  including when called directly without an external-tool configuration.
 - Read `factory/plan-review.md` for this project's plan-specific checklist (separate from
   code-review's checklist — a plan is reviewed for different things than a diff). If missing, run the
   generic checks only and say so.
@@ -54,6 +51,23 @@ This skill is read two ways:
   patterns. Not a full read of the codebase, just enough to check the plan's own claims about what's
   there.
 
+## Keep the plan authoritative
+
+When a design changes, revise its authoritative sections and remove superseded schemas, examples and
+tests from the active contract. Keep necessary decision history separate and explicitly non-normative;
+do not append a new design below an incompatible old one. Preserve every accepted requirement.
+
+A plan review decides whether implementation has a sound direction: scope, ownership, invariants,
+external contracts and how to verify them. It need not pre-write every constructor or incidental field
+count. A contradiction about which actor can release paid work is blocking; a redundant prose count
+is a warning when the actual schema and behavior are unambiguous. If correctness depends on a subtle
+state machine or provider behavior, use a small executable contract/probe to resolve that uncertainty
+instead of growing speculative prose through more review rounds.
+
+For follow-ups, use [finding closure and round quality](../factory-code-review/references/review-runs.md#make-each-round-earn-its-cost).
+Review all known consequences of a changed design together. Classify each new finding by concrete
+impact, and verify earlier fixes without making settled details a new design exercise.
+
 ## Step 3 — Review
 
 Score every category below against what you just read. PASS / WARN / FAIL each:
@@ -73,6 +87,10 @@ Score every category below against what you just read. PASS / WARN / FAIL each:
    addresses it (quote the section) or establish that it is silent on it. Each is scored on its own
    row, and its note must say which part of the plan settled it, or `n/a — <why this plan cannot
    violate it>`. A plan that is *silent* on an applicable bullet has not satisfied it.
+
+Before deciding the verdict, identify the exact reviewed revision and check that requirements from
+later user corrections were included. Separate blocking defects from optional unrelated improvements.
+A cold external reviewer performs this review itself; do not recursively launch another reviewer.
 
 ## Output & posting
 
