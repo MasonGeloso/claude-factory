@@ -26,12 +26,9 @@ This skill is read two ways:
 - Make sure you're working inside the repo the plan belongs to (the worktree it was built in, or a
   fresh checkout/clone if you're starting cold — read-only is enough, you don't need to build
   anything).
-- Find `factory/` at the repo root. **Read `factory/code-review.md` for the reviewer tool +
-  invocation.** This skill has **no separate tool configuration** — it always reuses whatever
-  `factory/code-review.md` names, pointed at this file instead. If `factory/code-review.md` doesn't
-  exist, or exists with `Enabled: no`, stop and say external plan review is unavailable — do not fall
-  back to some other tool or ask the user to configure one here; that config lives in exactly one
-  place.
+- Find `factory/` at the repo root. Read `factory/code-review.md` for context if present.
+  The driver owns tool selection and invocation; an already-invoked reviewer reviews the plan itself,
+  including when called directly without an external-tool configuration.
 - Read `factory/plan-review.md` for this project's plan-specific checklist (separate from
   code-review's checklist — a plan is reviewed for different things than a diff). If missing, run the
   generic checks only and say so.
@@ -73,6 +70,10 @@ Score every category below against what you just read. PASS / WARN / FAIL each:
    addresses it (quote the section) or establish that it is silent on it. Each is scored on its own
    row, and its note must say which part of the plan settled it, or `n/a — <why this plan cannot
    violate it>`. A plan that is *silent* on an applicable bullet has not satisfied it.
+
+Before deciding the verdict, identify the exact reviewed revision and check that requirements from
+later user corrections were included. Separate blocking defects from optional unrelated improvements.
+A cold external reviewer performs this review itself; do not recursively launch another reviewer.
 
 ## Output & posting
 

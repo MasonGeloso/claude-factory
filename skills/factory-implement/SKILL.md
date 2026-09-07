@@ -26,7 +26,10 @@ It is normally invoked alongside Claude Code's `/goal` so the objective stays pi
 
 ## The skills this driver runs — invoke each BY NAME with the Skill tool
 
-These are already-installed **user skills**. The normal way to run one is the **Skill tool with its name** — you don't need the path to invoke it. But the exact file path is given below so you can `Read` it directly if you ever need to (e.g. to inspect or debug it). Do not go searching the filesystem for them — they're listed here.
+Invoke each skill by its registered name (plugin installs may namespace it). The paths below are
+examples for a user-skill install, not a guarantee: resolve sibling files from the actual loaded
+skill directory when passing paths to an external CLI. Read that same installed version for the
+whole run; do not mix a plugin copy with an older user copy.
 
 | Pipeline phase | Skill name (invoke this) | Path (read if needed) |
 |---|---|---|
@@ -40,9 +43,10 @@ These are already-installed **user skills**. The normal way to run one is the **
 | Demo (web UI) | `factory-demo-video` | `~/.claude/skills/factory-demo-video/SKILL.md` |
 | Demo (CLI) | `factory-demo-terminal` | `~/.claude/skills/factory-demo-terminal/SKILL.md` |
 
-The factory skills all live under `~/.claude/skills/<name>/` (some, like `factory-demo-terminal`, have an `assets/` or `references/` subdir alongside `SKILL.md`). The suite is self-contained — every skill it calls is a `factory-*` skill. (The web-UI demo still relies on the external `playwright-cli` skill/tool for browser automation; that's a tool dependency, not part of the factory pipeline.)
+User-installed factory skills live under `~/.claude/skills/<name>/`; plugin copies live under the plugin directory (some, like `factory-demo-terminal`, have an `assets/` or `references/` subdir alongside `SKILL.md`). The suite is self-contained — every skill it calls is a `factory-*` skill. (The web-UI demo still relies on the external `playwright-cli` skill/tool for browser automation; that's a tool dependency, not part of the factory pipeline.)
 
-If you ever can't invoke one of these by name, stop and tell the user the skill is missing — do not improvise the work inline or fabricate a substitute.
+If invocation by name is unavailable, read the actual installed sibling `SKILL.md` and follow it
+directly. If the file is missing too, report the missing dependency; do not fabricate its checks.
 
 **Three exceptions** — the external-review steps. **`factory-plan-review`** (Step 3, pre-Execute),
 **`factory-code-review`** (Step 5, post-PR) and **`factory-qa`'s Step 6 second opinion** (Step 6) are
@@ -52,6 +56,9 @@ path plus the issue reference for plan-review; a PR URL for code-review; the PR 
 for the QA second opinion), since an external CLI agent can't resolve a Claude Code skill name. If no
 external tool is configured (or the config file doesn't exist), run that review yourself in-context
 instead — same review, just performed by you.
+
+For every external gate, follow [review run handling](../factory-code-review/references/review-runs.md):
+isolated output, owned process handle, successful exit, and a verdict tied to unchanged inputs.
 
 Note the split: **`factory-qa` itself always runs in-context** (it has to drive a real browser and a
 real stack); only its *final second-opinion step* shells out.
@@ -88,6 +95,22 @@ The point of saying all this: take the stress off. Thoroughness is the job.
 7. Check for `factory/plan-review.md` (optional — governs the pre-Execute plan review gate in Step 3). If missing, this run treats it as disabled and proceeds. If the user wants it, note it requires `factory/code-review.md` to already be enabled (it reuses that invocation) — offer `/factory-onboard` (picks up this module via `factory-plan-review/onboarding.md`).
 
 ---
+
+## Resume record
+
+Keep a concise local run record at `git rev-parse --git-path factory-run.md` (the command prints
+a path in this worktree's Git metadata). It survives resumption without making the reviewed diff dirty.
+Record the task's requirements and
+accepted corrections, current phase, worktree/branch/HEAD, plan path, stack mode and URLs, verification
+commands/results, each review's input revision + artifact directory + task handle, and the next action.
+Link substantial reports rather than copying them. Commit final reports through the usual handoff,
+not the local process handles. Never store credentials or raw sensitive payloads.
+
+Update it at phase boundaries and before yielding. On resumption, read it and the user's latest
+instructions, then verify Git, the live process handles, stack and tracker state before continuing.
+A status question is not cancellation. An explicit stop or changed requirement updates the record;
+a continuation hook must not resurrect work the user explicitly cancelled. Only mark requirements
+done with evidence; do not replace the original scope with the subset already implemented.
 
 ## Step 1 — Load the task
 

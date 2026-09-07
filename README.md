@@ -190,3 +190,15 @@ A project can opt out and use a simpler scheme; its `factory/intake.md` declares
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+### Reliable external reviews
+
+Plan/code/QA reviewers share a [run helper and recovery guide](skills/factory-code-review/references/review-runs.md).
+It isolates each review's output, records its revision and process, and rejects incomplete or stale
+verdicts. Project `factory/code-review.md` invocations can wrap their existing CLI with this helper;
+update installed skills before referencing it. Existing reviewer/model choices stay in project config.
+Factory runs also keep a short local record (`git rev-parse --git-path factory-run.md`) so resumption can recover requirements,
+review handles and evidence without guessing from a previous summary.
+
+Maintainer checks: `python3 -m unittest discover -s tests -v` exercises the helper with real child
+processes and disposable Git repositories, without a paid reviewer or external posting.

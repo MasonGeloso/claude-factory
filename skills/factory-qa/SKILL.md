@@ -36,6 +36,11 @@ So:
 
 ---
 
+For CLI/tooling changes, run the real command in a disposable workspace and inspect its exit status,
+stdout/stderr and resulting state, including failure and resume paths. Documentation-only changes
+need checked commands/links and a walkthrough of the changed instructions; no unrelated app stack or
+screenshots. Mark only inapplicable rows n/a with a reason. The QA gate still runs.
+
 ## Step 1 — Ground yourself
 
 1. **Re-read the requirements.** The full tracker issue *and every comment, start to finish* — the same
@@ -187,7 +192,7 @@ A QA run that isn't written down didn't happen. Post a comment on the issue with
    "tested the feature".
 2. **The findings and what you did about them** — every issue you found, and fixed vs. flagged.
 3. **Assumptions surfaced**, @-mentioning the owner from `factory/ownership.md`.
-4. **Evidence — screenshots at minimum.** Not a full demo video (that's the next step), but the
+4. **Evidence — screenshots for visual work.** Not a full demo video (that's the next step), but the
    feature visibly working: the happy path, the mobile view, and the notable states. For backend/LLM
    work: a rendered prompt excerpt and output samples from the 3–5 runs.
    - Attach them per the project's handoff config — the same channel the demo uses. If the tracker CLI
@@ -264,6 +269,9 @@ file, not a Claude Code skill invocation — just follow it as your task:
    and polish*.
 5. Post your findings as a **single comment on the PR**, and make it your final printed output so a
    headless caller can grep it. End with `VERDICT: PASS` or `VERDICT: FAIL` on its own line.
+
+Use [review run handling](../factory-code-review/references/review-runs.md) for this invocation too.
+Identify the reviewed HEAD and QA report; inaccessible evidence is an unverified check, not a PASS.
 
 ### Handling the result
 

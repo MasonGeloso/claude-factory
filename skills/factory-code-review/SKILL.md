@@ -40,6 +40,10 @@ Score every category below against what you just read. PASS / WARN / FAIL each:
 7. **Documentation** — Anything that warranted a doc update and didn't get one? And the other direction: does any **existing** doc now describe behavior this diff removed, renamed, or changed? A doc left describing the old shape is worse than no doc — grep the docs for the symbols the diff touched.
 8. **Project-specific checklist** — open `factory/code-review.md` and turn **every bullet into its own todo**, then work them one at a time. Each bullet gets its own targeted scan — grep for the thing it names, open the files it points at — not one pass over the diff answering all of them from memory. Each is scored on its own row, and its note must cite what you actually looked at: a `file:line` where it hits, or `n/a — <why this diff cannot violate it>` where it doesn't. "Looks fine" on a checklist row is not a review of that row.
 
+Before deciding the verdict, identify the exact reviewed revision and check that requirements from
+later user corrections were included. Separate blocking defects from optional unrelated improvements.
+A cold external reviewer performs this review itself; do not recursively launch another reviewer.
+
 ## Output & posting
 
 Same table shape as `factory-recheck`, plus the project-specific rows:

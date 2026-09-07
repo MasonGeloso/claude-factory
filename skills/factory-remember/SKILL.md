@@ -98,7 +98,8 @@ do not write a second, longer version of it.
 ## Step 6 — Show and confirm
 
 Print the diff of what you added or sharpened, per file, and which gate you chose and why in one
-line. Do not commit unless the user asks.
+line. Follow the session's existing commit/PR authorization; a request to include improvements in a PR
+already covers committing them. Otherwise leave the diff for review.
 
 ---
 
