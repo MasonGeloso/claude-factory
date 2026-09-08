@@ -1,11 +1,13 @@
 ---
 name: factory-demo-video
-description: 'Factory-suite copy of the demo-video skill. Create polished demo videos of web applications using playwright-cli with HTML overlay cards, code diffs, chapters, and banners. Records .webm video of a real browser session with composited overlays. Invoked by the factory-implement driver for `video` demo mode; also usable standalone. Use when user says "factory demo video", "make a demo video", "record a demo", "create a screencast", "demo recording", "video walkthrough", or wants to showcase a feature, bug fix, or product workflow as a video.'
+description: 'Factory-suite copy of the demo-video skill. Create polished demo videos of web applications using playwright-cli with HTML overlay cards, code diffs, chapters, and banners. Records .webm video of a real browser session with composited overlays, and also captures numbered PNG screenshots of every key moment (desktop + mobile) plus an artifacts.md manifest, so the work can be reviewed without watching a video. Invoked by the factory-implement driver for `video` demo mode; also usable standalone. Use when user says "factory demo video", "make a demo video", "record a demo", "create a screencast", "demo recording", "video walkthrough", or wants to showcase a feature, bug fix, or product workflow as a video.'
 ---
 
 # Demo Video Creator
 
 Create polished demo videos using `playwright-cli` with HTML overlay cards, code diffs, chapters, and banners. Records `.webm` video of a real browser session with overlays composited on top in real time.
+
+**Every demo produces two things: the video AND a set of still screenshots.** The video is for someone who wants the story; the screenshots are for someone who has 20 seconds and just wants to see that the thing works. Both are required — a demo run that produces only a `.webm` is incomplete.
 
 **IMPORTANT:** This skill uses `/playwright-cli` for all browser automation. Do NOT use `/playwright-skill`.
 
@@ -21,6 +23,31 @@ Create polished demo videos using `playwright-cli` with HTML overlay cards, code
 - A running web application or target URL
 - `playwright-cli` available (invoke via `/playwright-cli`)
 - Output directory for `.webm` files (created automatically)
+
+## Output contract — what a finished demo leaves on disk
+
+Everything for one demo goes in **one directory per feature**, under the project's demo output dir
+(`factory/deployment.md` → *Demo output dir*, usually `demos/`):
+
+```
+demos/<feature>/
+  <feature>-demo.webm     the video
+  01-<slug>.png           key moment 1   (numbered in the order they appear in the demo)
+  02-<slug>.png           key moment 2
+  03-<slug>-mobile.png    the same feature at 390px width
+  artifacts.md            one line per file above, with a caption
+```
+
+Rules:
+
+- **At least three screenshots**, and one per meaningful state the demo shows (empty, populated, error,
+  the after-state of the fix). Shoot the **live UI**, never an overlay card — a screenshot of your own
+  title slide tells the reader nothing.
+- **Mobile is not optional** if the feature has a UI a person can reach on a phone: at least one shot at
+  390×844.
+- **Slug names describe what is on screen** (`02-filtered-results.png`), not what step it was
+  (`02-step-two.png`).
+- `artifacts.md` is what `factory-explain` and the handoff comment read to list the files. Write it.
 
 ## Reference
 
@@ -71,29 +98,91 @@ async page => {
 - `showCodeCard(filepath, before, after, durationMs)` — side-by-side code diff
 - `showBanner(text, durationMs)` — floating pill annotation over live UI
 - `showBadge(text, color)` — persistent corner badge (caller disposes)
+- `shot(slug)` — **required.** Dispose any overlay, let the UI settle, then call
+  `page.screenshot()` into the demo dir with a running counter, so the stills number themselves in
+  demo order.
+
+**Screenshot helper — copy this in:**
+
+```js
+    let shotN = 0;
+    const SHOT_DIR = 'demos/<feature>';
+    const shot = async (slug) => {
+        shotN += 1;
+        await page.waitForTimeout(400);   // let animations settle
+        const nn = String(shotN).padStart(2, '0');
+        await page.screenshot({ path: `${SHOT_DIR}/${nn}-${slug}.png` });
+    };
+```
+
+Call `shot('...')` at every live-UI beat of the script — right after the state you just demonstrated
+is on screen and **after** the overlay covering it has been disposed. At the end of the script, switch
+to mobile and shoot it too:
+
+```js
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(800);
+    await shot('mobile');
+    await page.setViewportSize({ width: 1280, height: 720 });
+```
 
 ### Step 4: Record
 
 Use `/playwright-cli` commands in sequence:
 
 ```bash
+# 0. Make the per-feature demo dir (the script writes screenshots into it)
+mkdir -p demos/<feature>
+
 # 1. Open browser to target URL
 playwright-cli open http://localhost:3000
 
 # 2. Start recording
-playwright-cli video-start demos/my-demo.webm
+playwright-cli video-start demos/<feature>/<feature>-demo.webm
 
-# 3. Run the demo script
-playwright-cli run-code --filename=demos/my-demo.js
+# 3. Run the demo script — this also writes the screenshots
+playwright-cli run-code --filename=demos/<feature>/<feature>-demo.js
 
 # 4. Stop recording
 playwright-cli video-stop
 
 # 5. Close browser
 playwright-cli close
+
+# 6. Verify BOTH outputs exist before you call the demo done
+ls -1 demos/<feature>/
 ```
 
-### Step 5: Convert (Optional)
+`page.screenshot()` paths are resolved relative to the process cwd, so run these from the repo root
+(or make `SHOT_DIR` an absolute path in the script). If `ls` shows a `.webm` and no `.png` files, the
+demo is not finished — the `shot()` calls did not run, and you need to fix the script and re-record.
+
+### Step 5: Write `artifacts.md`
+
+The reviewer will not go spelunking through a folder of PNGs. Write
+`demos/<feature>/artifacts.md` listing every file you produced with a caption saying **what is on
+screen and why it matters** — not the scene number:
+
+```markdown
+# <Feature> — demo artifacts
+
+- `<feature>-demo.webm` — full walkthrough, 1m10s
+- `01-empty-state.png` — the report page with no data; this used to render blank
+- `02-filtered.png` — filtered to the last 7 days, 12 rows
+- `03-error.png` — what the user sees when the upstream API times out
+- `04-mobile.png` — the same page at 390px
+```
+
+`factory-explain` and the handoff comment read this file to list artifacts for the reviewer. Captions
+here are the difference between "here are five screenshots" and "here is proof it works".
+
+### Step 6: Verify what you produced
+
+Actually look at them. `Read` two or three of the PNGs and confirm the feature is visible and the
+overlay isn't covering it, and check the `.webm` size is non-trivial. A blank or overlay-covered
+screenshot is worse than none — it looks like evidence and isn't.
+
+### Step 7: Convert (Optional)
 
 ```bash
 # WebM → MP4
@@ -162,5 +251,8 @@ Rule of thumb: ~200-250ms per word in body text. Code: ~300ms per line.
 - [ ] URLs in script point to correct host/port
 - [ ] No real credentials or secrets in overlays or on page
 - [ ] HTML entities escaped in code examples
-- [ ] Output directory exists for `.webm` file
+- [ ] Output directory `demos/<feature>/` exists for the `.webm` **and the screenshots**
 - [ ] App state is clean (seed data loaded, no stale errors)
+- [ ] `shot()` helper defined and called at every live-UI beat, including one mobile shot
+- [ ] After recording: `.webm` **and** ≥3 `.png` files on disk, and you have looked at them
+- [ ] `artifacts.md` written, one captioned line per file

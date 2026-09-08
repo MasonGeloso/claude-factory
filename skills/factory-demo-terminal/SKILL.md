@@ -1,13 +1,33 @@
 ---
 name: factory-demo-terminal
-description: 'Factory-suite copy of the demo-terminal skill. Record polished terminal-style screencast demos by capturing real CLI output and replaying it in an animated HTML "terminal" page via Playwright. Outputs a .webm. Invoked by the factory-implement driver for `terminal` demo mode; also usable standalone. Use when the user wants to demo a CLI tool, script, REPL session, or other terminal workflow — anything where the artifact lives in stdout rather than a browser. Triggers: "factory demo terminal", "demo a CLI", "record a terminal session", "screencast a script", "make a video of this command", "demo my tool". Use `factory-demo-video` (browser-based) when the subject is a web app instead.'
+description: 'Factory-suite copy of the demo-terminal skill. Record polished terminal-style screencast demos by capturing real CLI output and replaying it in an animated HTML "terminal" page via Playwright. Outputs a .webm plus a numbered PNG still of every scene and an artifacts.md manifest, so the work can be reviewed without watching a video. Invoked by the factory-implement driver for `terminal` demo mode; also usable standalone. Use when the user wants to demo a CLI tool, script, REPL session, or other terminal workflow — anything where the artifact lives in stdout rather than a browser. Triggers: "factory demo terminal", "demo a CLI", "record a terminal session", "screencast a script", "make a video of this command", "demo my tool". Use `factory-demo-video` (browser-based) when the subject is a web app instead.'
 ---
 
 # Terminal Demo Recorder
 
-Builds a self-contained HTML "terminal" page that plays back **real** CLI output with animated typing + scene markers, then records it as a `.webm` via Playwright. The output is suitable for sharing in PRs, Slack, docs, or social posts — same format as the project's `demos/*.webm` browser screencasts.
+Builds a self-contained HTML "terminal" page that plays back **real** CLI output with animated typing + scene markers, then records it as a `.webm` via Playwright — **and grabs a still PNG of every scene while it records**, so the result can be skimmed in 20 seconds instead of watched. The output is suitable for sharing in PRs, Slack, docs, or social posts — same format as the project's `demos/*.webm` browser screencasts.
 
 The terminal is rendered in a browser, but the **command output is captured live from the actual CLI** before recording — nothing is fabricated.
+
+## What a finished run leaves on disk
+
+The recorder writes all three of these into the output directory. A run that produced only the
+`.webm` is **not finished**:
+
+```
+demos/<feature>/
+  <feature>-demo.webm     the video
+  01-<slug>.png           still of scene 1, taken the moment its output is fully on screen
+  02-<slug>.png           still of scene 2
+  artifacts.md            one captioned line per file above
+```
+
+The stills and the manifest are automatic — the template handles both. The slug comes from the
+scene's `command`, or from an explicit `"shot": "my-slug"` key on the scene if you want a better
+name; the caption in `artifacts.md` comes from the scene's `narration`. So **writing a good
+`narration` for each scene now also writes the caption the reviewer reads.**
+
+`artifacts.md` is what the handoff comment and `/factory-explain` read to list what was produced.
 
 ## When to Use
 
@@ -66,6 +86,8 @@ SCENES = [
         "output": _read(CAPTURES_DIR / "01-stats.txt"),
         "type_delay_ms": 35,  # per-char typing delay; 25-40 is natural
         "hold_ms": 2800,      # how long to leave the result on screen
+        "shot": "stats-overview",  # optional: filename slug for this scene's PNG
+                                   # (defaults to a slug of the command)
     },
     # … more command scenes …
 
@@ -74,12 +96,13 @@ SCENES = [
 ```
 
 Two scene shapes:
-- **Splash** — `{title, subtitle, duration_ms}` — full-screen title card; one at start, optionally one at end.
-- **Command** — `{command, narration, output, type_delay_ms, hold_ms}` — animated prompt + typed command + revealed output.
+- **Splash** — `{title, subtitle, duration_ms}` — full-screen title card; one at start, optionally one at end. Splash scenes are not screenshotted (a picture of your own title card proves nothing).
+- **Command** — `{command, narration, output, type_delay_ms, hold_ms, shot?}` — animated prompt + typed command + revealed output, **and one PNG still** taken right after the output finishes rendering.
 
 Other things you may want to tune in the template:
 - `CAPTURES_DIR` — where you saved the stdout files
 - `OUTPUT_WEBM` — final video path
+- `SHOTS_DIR` / `ARTIFACTS_MD` — where the stills and the manifest go (default: next to the video)
 - `_colorize()` in the HTML's `<script>` — regex-based output highlighting (rank headers, separators, totals, etc.). Adapt to your CLI's output shape.
 - Viewport size (default `1280×720` — matches most demo conventions)
 
@@ -109,7 +132,10 @@ Also update:
 python demos/<feature>-demo.py
 ```
 
-The script prints an estimated duration, runs headless Chromium, and writes the `.webm`. Typical run takes ~the duration of the demo + a couple of seconds. A 50-second demo produces a ~2 MB file.
+The script prints an estimated duration, runs headless Chromium, and writes the `.webm`, one `NN-<slug>.png` per command scene (it logs each one as `shot  NN-<slug>.png`), and `artifacts.md`. Typical run takes ~the duration of the demo + a couple of seconds. A 50-second demo produces a ~2 MB video and a handful of ~100 KB stills.
+
+If it prints `WARNING: no screenshots were captured`, the demo is incomplete — the `shot()` call in
+`showOutput()` has been edited out of the template. Restore it and re-record.
 
 ### Step 6 — Sanity check
 
@@ -149,7 +175,7 @@ Delete the intermediate HTML the script writes (it's not needed after recording)
 
 | Path | Purpose |
 |---|---|
-| `assets/recorder-template.py` | Self-contained Python script — HTML template, scene runner, Playwright recorder. Copy into the target project's `demos/` dir and edit `SCENES`. |
+| `assets/recorder-template.py` | Self-contained Python script — HTML template, scene runner, Playwright recorder, per-scene screenshot capture, and the `artifacts.md` writer. Copy into the target project's `demos/` dir and edit `SCENES`. |
 
 ## Comparison to `factory-demo-video`
 
@@ -158,7 +184,7 @@ Delete the intermediate HTML the script writes (it's not needed after recording)
 | Subject | CLI / script / REPL | Web UI / app |
 | Tool | Plain Playwright + custom HTML | `playwright-cli` skill helpers |
 | Source of truth | Captured stdout | Live browser actions |
-| Output | `.webm` of an HTML "terminal" | `.webm` of a real browser session |
+| Output | `.webm` of an HTML "terminal" + a PNG per scene + `artifacts.md` | `.webm` of a real browser session + PNGs of the key states (incl. mobile) + `artifacts.md` |
 | Effort | ~10 min once template is copied | Variable — depends on UI complexity |
 
 Use `factory-demo-video` when the user is showing a UI. Use this skill when the user is showing a command.

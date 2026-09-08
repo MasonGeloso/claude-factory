@@ -27,6 +27,7 @@ flowchart TB
     subgraph deliver [Take work to done]
       IMPL["/factory-implement (driver)"]
       IMPL --> PLAN["/factory-plan"] --> PR1["/factory-plan-review\n(optional gate)"] --> EXE["/factory-execute"] --> RC["/factory-recheck"] --> REVIEW["/factory-code-review\n(optional PR gate)"] --> QA["/factory-qa\n(required gate)"] --> DEMO["demo-video / demo-terminal"]
+      DEMO --> XPL["/factory-explain\n(ad-hoc: plain-English briefing)"]
       PLAN --> RR["/factory-reresearch"] --> PR1
       QA -.->|FAIL| EXE
     end
@@ -117,6 +118,7 @@ In any repo:
 
 1. `/factory-intake` — first run onboards a `factory/` directory (tracker, CLI, classification, ownership, handoff). After that, paste a transcript and it files the issues.
 2. `/goal /factory-execute <issue>` — first run onboards `codebases.md` + `deployment.md` (repos, worktrees, how to run the stack, demo mode). After that, it builds the task end to end.
+3. `/factory-explain` — when it hands you a PR and you have no idea what it just did: a jargon-free briefing on what changed, what it decided on its own, what it skipped, and where the video and screenshots are.
 
 ## The skills
 
@@ -134,8 +136,9 @@ In any repo:
 | `factory-qa` | **Required** gate: actually use the feature on the running stack — real user scenarios, desktop + mobile, paper-cuts and polish, real prompts/output over 3–5 examples — then post a QA report with screenshots and get an external second opinion |
 | `factory-remember` | Turn a correction that just happened into a concise rule in the right gate's checklist (plan review / code review / QA) |
 | `factory-weekly-rule-audit` | Review weekly agent failures and propose concise rule additions, edits, merges or removals in Markdown |
-| `factory-demo-video` | Record a browser screencast of the change (web UI) |
-| `factory-demo-terminal` | Record a terminal screencast (CLI / stdout) |
+| `factory-demo-video` | Record a browser screencast of the change (web UI) — video **plus** captioned screenshots of each key state, desktop and mobile |
+| `factory-demo-terminal` | Record a terminal screencast (CLI / stdout) — video **plus** a still of every scene |
+| `factory-explain` | Ad-hoc, read-only briefing on a finished run, in plain English: what changed (before → now), which decisions were made without asking you, what was skipped or is still owed, what new work turned up, and clickable paths to the demo video and screenshots |
 | `factory-terminal-demo-video` | Narrated, subtitled video of a **real interactive** CLI/agent session, replayed inside a CSS "OS" window |
 | `factory-schedule-sync` | Build a high-leverage sync agenda from the backlog + attendees + priorities |
 | `factory-sync-recap` | Meeting transcript → issue updates, decisions, and a refreshed `priority.md` |

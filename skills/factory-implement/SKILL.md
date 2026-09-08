@@ -259,6 +259,13 @@ problem here. Pull the story from the task itself plus the QA run; don't re-inte
 recording the demo surfaces something off, **go back and fix it** — the demo is a real check, not a
 formality.
 
+**The demo is video *and* stills.** Both demo skills produce, in one per-feature directory under the
+configured demo output dir: the `.webm`, a numbered `NN-<slug>.png` for each key moment (including a
+mobile-width shot for UI work), and an `artifacts.md` listing each file with a caption. Most reviewers
+will look at the screenshots and never open the video, so treat them as the primary artifact. Before
+moving on, `ls` the directory and **look at the stills yourself** — a demo dir with a `.webm` and no
+PNGs means the demo skill's screenshot step didn't run, and the demo is not done.
+
 ---
 
 ## Step 8 — Handoff (per the Handoff & status config in `intake.md`)
@@ -270,12 +277,17 @@ the issue / re-query the status; don't assume the command worked):
 1. Make sure everything is committed and pushed to the task branch (QA fixes included) and the PR is
    up to date.
 2. Move the tracker status to the configured **ready-for-review** state — then confirm it actually changed.
-3. **Post the demo as a comment** on the issue ("here's it working"), per the project's handoff config (the config says exactly how — link/attach). If demo mode is `none`, say so instead. **Do not end the run without doing this.**
+3. **Post the demo as a comment** on the issue ("here's it working"), per the project's handoff config (the config says exactly how — link/attach). Post the **screenshots alongside the video**, with the captions from the demo dir's `artifacts.md`, so the issue is reviewable without downloading anything. If demo mode is `none`, say so instead. **Do not end the run without doing this.**
 4. Confirm the **QA report comment** (with its screenshots/artifacts) is on the issue — `factory-qa`
    posts it, but it is part of the handoff package, so verify it's actually there.
 5. **Post the re-provision one-liner** (if the provisioning doc documents one) so the owner can spin the exact stack back up and poke at it themselves — the demo video is not the only review.
 6. Post a **concise log** comment: key decisions, assumptions made, open questions.
 7. **End the run by leaving the stack the way the repo's `factory/` docs say to** — if they document a non-destructive pause, use it (free the box's resources while keeping containers, data, and the worktree intact so the owner can resume in seconds). **Do not tear the stack down, delete the worktree, or remove any data volume at handoff** — that cleanup happens only after the owner has reviewed and said so. If the docs don't document a pause, leave a clear note of what is left running.
+
+Then, in your final message to the user, tell them they can run **`/factory-explain`** for a plain-English
+briefing on this run — what changed, which calls you made without asking, what you didn't do, and where
+the video and screenshots are. Do not write that briefing inline; that skill exists so it comes out the
+same shape every time.
 
 ## Definition of done — DO NOT report the task finished until ALL are true
 
@@ -292,6 +304,7 @@ Before you say "done" / "ready" / hand back to the user, every box must be check
 - [ ] **QA report posted on the issue, with screenshots** (or output samples for backend work)
 - [ ] **QA's external second opinion returned `PASS`** and anything it raised is fixed or answered
 - [ ] Demo recorded **and verified** (you looked at it) and built from the QA scenarios, or demo mode is `none`
+- [ ] Demo dir contains the video **and** the screenshots **and** `artifacts.md` (or demo mode is `none`)
 - [ ] Tracker status moved to ready-for-review (confirmed)
 - [ ] Demo posted as an issue comment (or stated `none`)
 - [ ] Re-provision one-liner posted (if the provisioning doc documents one)

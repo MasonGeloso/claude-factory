@@ -1,6 +1,13 @@
 """Terminal-style demo recorder. Plays back captured CLI output in an
 animated HTML "terminal" page and records it as a .webm via Playwright.
 
+Produces THREE things in the output directory, not just the video:
+    demo.webm        the recording
+    NN-<slug>.png    a still of every command scene, at the moment its output
+                     is fully on screen (numbered in demo order)
+    artifacts.md     one captioned line per file, for the handoff comment and
+                     for /factory-explain to list
+
 Setup:
     1. Capture each scene's real stdout to a text file (see CAPTURES_DIR).
     2. Edit the SCENES list below.
@@ -22,6 +29,8 @@ from playwright.async_api import async_playwright
 SCRIPT_DIR = Path(__file__).resolve().parent
 CAPTURES_DIR = Path("/tmp/demo-captures")              # where you saved CLI stdout
 OUTPUT_WEBM = SCRIPT_DIR / "demo.webm"                 # final video output
+SHOTS_DIR = OUTPUT_WEBM.parent                         # stills land next to the video
+ARTIFACTS_MD = OUTPUT_WEBM.parent / "artifacts.md"     # captioned list of what was produced
 
 
 def _read(p: Path) -> str:
@@ -223,13 +232,32 @@ HTML_TEMPLATE = r"""<!doctype html>
     await sleep(260);
   }
 
-  async function showOutput(output, holdMs) {
+  function slugify(s) {
+    return (s || 'scene').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'scene';
+  }
+
+  // Screenshot handshake with the Python recorder: freeze here, ask it to grab
+  // this exact frame, resume when it acks. The pause happens inside a hold, so
+  // it is invisible in the video. Times out rather than hanging the demo.
+  async function shot(slug, caption) {
+    const id = (window.__SHOT_SEQ__ = (window.__SHOT_SEQ__ || 0) + 1);
+    window.__SHOT_REQ__ = { id: id, slug: slugify(slug), caption: caption || '' };
+    const deadline = Date.now() + 6000;
+    while ((window.__SHOT_ACK__ || 0) < id && Date.now() < deadline) {
+      await sleep(60);
+    }
+  }
+
+  async function showOutput(output, holdMs, shotSlug, shotCaption) {
     const lines = output.split('\n');
     for (const l of lines) {
       appendLine(colorize(l));
       await sleep(8);
     }
     appendLine('');
+    await sleep(450);                       // let the last line settle
+    await shot(shotSlug, shotCaption);      // still of the finished output
     await sleep(holdMs);
   }
 
@@ -264,7 +292,12 @@ HTML_TEMPLATE = r"""<!doctype html>
       cmdIdx += 1;
       showChapter('Scene ' + String(cmdIdx).padStart(2, '0'), 2200);
       await typeCommand(scene.command, scene.narration, scene.type_delay_ms);
-      await showOutput(scene.output, scene.hold_ms);
+      await showOutput(
+        scene.output,
+        scene.hold_ms,
+        scene.shot || scene.command,
+        scene.narration || scene.command
+      );
       // Clear every 2 scenes so the terminal doesn't run off the bottom.
       // Set to `cmdIdx >= 1` for every scene, or remove for none.
       if (cmdIdx % 2 === 0) {
@@ -282,8 +315,52 @@ HTML_TEMPLATE = r"""<!doctype html>
 """
 
 
+async def _shot_watcher(page, shots: list, stop: asyncio.Event) -> None:
+    """Serve screenshot requests from the page until the demo finishes.
+
+    The page sets window.__SHOT_REQ__ = {id, slug, caption} and blocks until
+    window.__SHOT_ACK__ catches up, so every still is the exact frame the demo
+    asked for rather than whatever happened to be on screen when we polled.
+    """
+    served = 0
+    while not stop.is_set():
+        try:
+            req = await page.evaluate("() => window.__SHOT_REQ__ || null")
+        except Exception:
+            return  # page/context gone — demo is over
+        if req and int(req.get("id", 0)) > served:
+            served = int(req["id"])
+            name = f"{served:02d}-{req.get('slug') or 'scene'}.png"
+            try:
+                await page.screenshot(path=str(SHOTS_DIR / name))
+                shots.append((name, (req.get("caption") or "").strip()))
+                print(f"  shot  {name}")
+            except Exception as e:  # never let a failed still kill the recording
+                print(f"  shot  FAILED for {name}: {e}")
+            try:
+                await page.evaluate("(id) => { window.__SHOT_ACK__ = id; }", served)
+            except Exception:
+                return
+        await asyncio.sleep(0.08)
+
+
+def _write_artifacts_md(shots: list) -> None:
+    """One captioned line per file — read by the handoff comment and /factory-explain."""
+    title = OUTPUT_WEBM.stem.replace("-", " ").replace("_", " ").strip() or "Demo"
+    lines = [f"# {title} — demo artifacts", "", f"- `{OUTPUT_WEBM.name}` — full terminal walkthrough"]
+    for name, caption in shots:
+        lines.append(f"- `{name}` — {caption}" if caption else f"- `{name}`")
+    ARTIFACTS_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"Wrote {ARTIFACTS_MD} ({len(shots)} screenshots listed)")
+
+
 async def record() -> None:
     OUTPUT_WEBM.parent.mkdir(parents=True, exist_ok=True)
+    SHOTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Clear stills from a previous run so the manifest matches what is on disk.
+    for stale in SHOTS_DIR.glob("[0-9][0-9]-*.png"):
+        stale.unlink()
 
     html = HTML_TEMPLATE.replace("__SCENES_JSON__", json.dumps(SCENES))
     html_path = OUTPUT_WEBM.parent / f"_{OUTPUT_WEBM.stem}.html"
@@ -297,7 +374,8 @@ async def record() -> None:
         else:
             type_ms = s.get("type_delay_ms", 35) * len(s.get("command", ""))
             line_ms = len(s["output"].splitlines()) * 8
-            total_ms += 1100 + type_ms + 260 + line_ms + s.get("hold_ms", 3500) + 700
+            # +450ms settle +~350ms screenshot handshake per command scene
+            total_ms += 1100 + type_ms + 260 + line_ms + s.get("hold_ms", 3500) + 700 + 800
     total_ms += 1500
     print(f"Estimated demo duration: {total_ms/1000:.1f}s")
 
@@ -315,11 +393,16 @@ async def record() -> None:
         )
         page = await context.new_page()
         await page.goto(html_path.as_uri())
+        stop = asyncio.Event()
+        shots: list = []
+        watcher = asyncio.create_task(_shot_watcher(page, shots, stop))
         try:
             await page.wait_for_function("window.__DEMO_DONE__ === true", timeout=total_ms + 30000)
         except Exception as e:
             print(f"wait_for_function errored ({e}); finalizing anyway.")
         await page.wait_for_timeout(800)
+        stop.set()
+        await watcher
         await context.close()
         await browser.close()
 
@@ -334,6 +417,11 @@ async def record() -> None:
     html_path.unlink(missing_ok=True)
     size_kb = OUTPUT_WEBM.stat().st_size // 1024
     print(f"Wrote {OUTPUT_WEBM} ({size_kb} KB)")
+
+    _write_artifacts_md(shots)
+    if not shots:
+        print("WARNING: no screenshots were captured — the demo is incomplete. "
+              "Check that showOutput() still calls shot().")
 
 
 if __name__ == "__main__":
