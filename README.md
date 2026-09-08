@@ -133,6 +133,7 @@ In any repo:
 | `factory-code-review` | Optional second-opinion review of the opened PR — runnable by an external CLI agent (e.g. Codex) or in-context; blocking gate right after the PR opens |
 | `factory-qa` | **Required** gate: actually use the feature on the running stack — real user scenarios, desktop + mobile, paper-cuts and polish, real prompts/output over 3–5 examples — then post a QA report with screenshots and get an external second opinion |
 | `factory-remember` | Turn a correction that just happened into a concise rule in the right gate's checklist (plan review / code review / QA) |
+| `factory-weekly-rule-audit` | Review weekly agent failures and propose concise rule additions, edits, merges or removals in Markdown |
 | `factory-demo-video` | Record a browser screencast of the change (web UI) |
 | `factory-demo-terminal` | Record a terminal screencast (CLI / stdout) |
 | `factory-terminal-demo-video` | Narrated, subtitled video of a **real interactive** CLI/agent session, replayed inside a CSS "OS" window |
