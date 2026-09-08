@@ -21,13 +21,13 @@ Hard constraints from the user, verbatim intent:
   repo, re-run `/factory-onboard` on a project, onboarding detects the module missing and installs it,
   modifying `factory-implement`'s own pipeline doc + the onboarding registry. No per-project hand-wiring.
 - Factory-wide, not project-specific.
-- Install/activate it on `~/code/senki` right now, once built.
+- Install/activate it on the target project right now, once built.
 
 ## Research — the exact pattern being mirrored
 
 Read in full: `skills/factory-code-review/{SKILL.md,onboarding.md,templates/code-review.md}`,
 `skills/factory-content-review/{SKILL.md,onboarding.md,templates/content-review.md}`,
-`skills/factory-implement/SKILL.md`, `skills/factory-onboard/SKILL.md`, and senki's real
+`skills/factory-implement/SKILL.md`, `skills/factory-onboard/SKILL.md`, and the target project's real
 `factory/code-review.md` + `factory/content-review.md` (both already `Enabled: yes`, working Codex CLI
 0.149.1 invocations, model `gpt-5.6-terra`).
 
@@ -77,20 +77,15 @@ phrasing pattern for a "how the calling skill treats this gate" section — used
 `factory-plan-review`'s own such section, adapted for a driver ("factory-implement run") instead of an
 autonomous cron dispatcher.
 
-**Where the real invocation command already lives for senki**: `factory/code-review.md` on
-`~/code/senki`'s main branch (already `Enabled: yes`) — the exact command to copy structurally (just
+**Where the real invocation command already lives**: `factory/code-review.md` on
+the target project's main branch (already `Enabled: yes`) — the exact command to copy structurally (just
 swapping the target SKILL.md path and prompt wording) is:
 ```
 codex exec --approve-for-me \
   -c 'sandbox_workspace_write.network_access=true' \
   -o /tmp/factory_plan_review.txt \
-  "Read /home/hone/.dsh/skills/factory-plan-review/SKILL.md and follow it. Review this plan: <PLAN_FILE_PATH>, for issue <ISSUE_URL>."
+  "Read ~/.claude/skills/factory-plan-review/SKILL.md and follow it. Review this plan: <PLAN_FILE_PATH>, for issue <ISSUE_URL>."
 ```
-(`.dsh` on this box resolves identically to `~/.claude` — confirmed via `readlink -f`, contents
-diffed byte-identical to `~/.claude/skills/factory-code-review/SKILL.md`. It's this machine's existing
-alias, already used in the committed senki config — reuse it for consistency with the other two
-review modules' committed docs on this exact repo, rather than switching to a different-looking path
-that would read as an inconsistency next to the other two files.)
 
 ## Plan
 
@@ -297,25 +292,25 @@ generically. (Optional nuance not worth its own registry column: if a user tries
 `plan-review.md` while `code-review.md` is missing/disabled, `factory-plan-review/onboarding.md`
 itself handles that dependency — no special-casing needed in `factory-onboard`'s own procedure.)
 
-### 6. Install core-repo changes + activate on senki
+### 6. Install core-repo changes + activate on the target project
 
 1. In `~/code/factory`: create the three new files above, run `./install.sh` to refresh
    `~/.claude/skills/` (confirms no install errors, matches the pattern used after every skill change
    this session), commit + push to `origin/main`.
-2. In `~/code/senki` (the real checkout the `marketing-post` agent runs in — **not** the
+2. In `~/code/<project>` (the real checkout the `marketing-post` agent runs in — **not** the
    marketing-migration worktree, which is done and merged): run `/factory-onboard`. It will scan,
    report `factory/plan-review.md` missing → needed by: implement, and offer to onboard it (default
    scope is "missing modules only," which this now is).
    - Since `factory/code-review.md` is already `Enabled: yes` there, the dependency check in
      `factory-plan-review/onboarding.md` passes immediately — no need to onboard code-review first.
    - Answer the "enable at all" question (yes, matching the existing code-review/content-review
-     posture on this repo) and the project-specific-checklist question (reuse senki's existing
+     posture on this repo) and the project-specific-checklist question (reuse the project's existing
      code-review checklist categories as a starting point — migrations/authz/observability/cost/
      triggers/localization/tests/vibecoded-look — since a plan review should check the plan commits
      to addressing these, same as the diff-review already checks the code does).
-   - Confirm the resulting `factory/plan-review.md`, commit + push on senki's `main`.
+   - Confirm the resulting `factory/plan-review.md`, commit + push on the project's `main`.
 3. Verify: `factory-implement/SKILL.md`'s Step 0 item 6 and Step 3 item 3 now have something to read
-   on senki; no live `factory-implement` run needs to actually happen to prove the wiring — the module
+   on the project; no live `factory-implement` run needs to actually happen to prove the wiring — the module
    registry status matrix (all four review-adjacent modules ✓) is the confirmation.
 
 ## Verification
@@ -327,6 +322,6 @@ itself handles that dependency — no special-casing needed in `factory-onboard`
 - Confirm `factory-onboard/SKILL.md`'s new row matches the existing rows' column shape exactly.
 - Re-run `./install.sh` in `~/code/factory` after all edits, confirm 25 skills install cleanly (24
   today + the new one).
-- On senki: confirm `factory/plan-review.md` exists, `Enabled: yes`, and its own text is internally
+- On the project: confirm `factory/plan-review.md` exists, `Enabled: yes`, and its own text is internally
   consistent (references code-review.md correctly, has a real project-specific checklist, no stray
   Tool/Invocation fields duplicated in by mistake).

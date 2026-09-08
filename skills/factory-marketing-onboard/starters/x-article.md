@@ -167,8 +167,8 @@ clearly in the platform's own onboarded config if so — the default is draft-on
 Setting a DOM `Range` from JS and pressing a key in the **same** `browser_batch` does not work: the
 editor has not yet adopted the selection when the keystroke arrives, so the key applies at the *old*
 caret. This does not error — it quietly eats the wrong characters. One real run turned
-`komori.app（https://komori.app）でアカウントを作る` into
-`komori.app（https://komori.aでアカウントを作る` in six keypresses before anyone noticed.
+`example.app（https://example.app）でアカウントを作る` into
+`example.app（https://example.aでアカウントを作る` in six keypresses before anyone noticed.
 
 The loop that is safe:
 
