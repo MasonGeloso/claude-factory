@@ -68,6 +68,10 @@ For follow-ups, use [finding closure and round quality](../factory-code-review/r
 Review all known consequences of a changed design together. Classify each new finding by concrete
 impact, and verify earlier fixes without making settled details a new design exercise.
 
+Apply the [conditional failure checks](../factory-plan/references/preventable-failures.md) when this task changes progress tracking,
+scheduling, data representation, external payload handling or pipeline monitoring. Reuse applicable
+evidence in the existing gate; do not add a review round just to restate it.
+
 ## Step 3 — Review
 
 Score every category below against what you just read. PASS / WARN / FAIL each:
